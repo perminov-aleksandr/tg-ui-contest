@@ -33,12 +33,22 @@ function ChartData(data) {
     }
 
     this.getDisplayedX = () => {
-        return this.getX().map((x) => new Date(x).toLocaleDateString());
+        return this.getX().map((x) => new Date(x).toLocaleDateString("en-US",
+            {
+                day: "numeric",
+                month: "short"
+            }));
     }
 }
 
-function ChartMap(canvas, chartData, options) {
-    this.canvas = canvas;
+/**
+ * @param {HTMLDivElement} container 
+ * @param {ChartData} chartData 
+ * @param {Object} options 
+ */
+function ChartMap(container, chartData, options) {
+    this.container = container;    
+    this.canvas = this.container.querySelector("canvas");
     this.context = this.canvas.getContext("2d");
     this.chartData = chartData;
     this.options = options || {};
@@ -59,9 +69,11 @@ function ChartMap(canvas, chartData, options) {
     }
 
     this.draw = () => {
+        this.canvas.width = 640;
+        this.canvas.height = 100;
         this.context.translate(0, this.canvas.height);        
         this.context.scale(1, -1);
-        this.context.scale(1, this.canvas.height / this.chartData.maxY);
+        this.context.scale(1, 0.9 * this.canvas.height / this.chartData.maxY);
 
         for (const datasetName of Object.keys(this.chartData.datasets))
             drawDataset(this.canvas, this.context, this.chartData.datasets[datasetName], this.chartData.getColor(datasetName));
@@ -120,7 +132,7 @@ function Chart(canvas, chartData, options) {
             canvasContext.font = this.options.scalesFontStyle;
             canvasContext.textBaseline = "top";
 
-            canvasContext.fillText(x, index * this.spaceBetweenPoints, this.canvas.height);
+            canvasContext.fillText(x, index * this.spaceBetweenPoints, this.canvas.height + 5);
         });
     }
 
@@ -129,16 +141,30 @@ function Chart(canvas, chartData, options) {
         drawScalesY(canvasContext);
     }
 
-    function drawData() {
-        
+    function drawData(canvas, canvasContext, dataset, color) {
+        canvasContext.strokeStyle = color;
+
+        canvasContext.beginPath();
+        canvasContext.moveTo(0, canvas.height - dataset[0]);
+
+        const spaceBetweenPoints = canvas.width / dataset.length;
+        dataset.forEach((val, index) => {
+            canvasContext.lineTo(spaceBetweenPoints*(index+1), canvas.height - val);
+        });
+
+        canvasContext.stroke();
+        canvasContext.closePath();
     }
 
-    this.draw = function() {
-        this.context.translate(0, -this.canvas.height);        
+    this.draw = () => {
+        this.context.translate(0, -this.canvas.height);
         this.context.scale(this.canvas.height / this.chartData.maxY, this.canvas.height / this.chartData.maxY);
 
         drawScales(this.context);
-        drawData();
+
+        for (const datasetKey of Object.keys(this.chartData.datasets)) {
+            drawData(this.canvas, this.context, this.chartData.datasets[datasetKey], this.chartData.getColor(datasetKey));
+        }   
     }
 }
 
@@ -163,9 +189,22 @@ function TgChart(containerId, data, options) {
         var chartElement = document.createElement("canvas");
         chartElement.className = "chart__content";
         container.appendChild(chartElement);
-
-        var chartMapElement = document.createElement("canvas");
+        
+        var chartMapElement = document.createElement("div");
         chartMapElement.className = "chart__map";
+
+        var chartMapCanvas = document.createElement("canvas");
+        chartMapCanvas.className = "chart__map__canvas";
+        chartMapElement.appendChild(chartMapCanvas);
+
+        chartMapElement.innerHTML += "<div class='chart__map__overlay__left'></div>";
+
+        var chartMapWindow = document.createElement("div");
+        chartMapWindow.className = "chart__map__window";
+        chartMapElement.appendChild(chartMapWindow);
+
+        chartMapElement.innerHTML += "<div class='chart__map__overlay__right'></div>";
+
         container.appendChild(chartMapElement);
 
         var legendElement = document.createElement("div");
@@ -194,8 +233,8 @@ function TgChart(containerId, data, options) {
         chartElement.setAttribute("width", chartElement.offsetWidth);
         chartElement.setAttribute("height", chartElement.offsetHeight);
 
-        chartMapElement.setAttribute("width", chartMapElement.offsetWidth);
-        chartMapElement.setAttribute("height", chartMapElement.offsetHeight);
+        chartMapCanvas.setAttribute("width", 640);
+        chartMapCanvas.setAttribute("height", 100);
 
         return {
             chartMap: chartMapElement,
@@ -208,7 +247,10 @@ function TgChart(containerId, data, options) {
         legendItemClass: this.options.legendItemClass
     });
 
-    this.chartMap = new ChartMap(this.layout.chartMap, this.chartData);
+    this.chartMap = new ChartMap(this.layout.chartMap, this.chartData, {
+        width: 640,
+        height: 100
+    });
     this.chart = new Chart(this.layout.chart, this.chartData, {
         scalesColor: "#f2f4f5",
         scalesTextColor: "#96a2aa",
