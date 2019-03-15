@@ -51,7 +51,7 @@ const TgChart = (function () {
         this.chartData = new ChartData(data);
     }
 
-    function generateLayout({}) {
+    function generateLayout({} = {}) {
         var chartElement = document.createElement("div");
         chartElement.className = "chart__content";
         this.container.appendChild(chartElement);
@@ -76,19 +76,19 @@ const TgChart = (function () {
         var legendElement = document.createElement("div");
         legendElement.className = "chart__legend";
         
-        for (const datasetName of Object.keys(chartData.datasets)) {            
+        for (const datasetName of Object.keys(this.chartData.datasets)) {            
             var legendItem = document.createElement("span");            
-            legendItem.className = options.legendItemClass;
+            legendItem.className = "chart__legend__item";
 
             var indicator = document.createElement("span");
             indicator.className = "chart__legend__item__indicator";
-            indicator.style.backgroundColor = chartData.getColor(datasetName);
-            indicator.style.borderColor = chartData.getColor(datasetName);
+            indicator.style.backgroundColor = this.chartData.getColor(datasetName);
+            indicator.style.borderColor = this.chartData.getColor(datasetName);
             legendItem.appendChild(indicator);
 
             var itemText = document.createElement("span");
             itemText.className = "chart__legend__item__text";
-            itemText.innerText = chartData.data.names[datasetName];
+            itemText.innerText = this.chartData.data.names[datasetName];
             legendItem.appendChild(itemText);
 
             legendElement.appendChild(legendItem);
@@ -108,28 +108,30 @@ const TgChart = (function () {
     }
 
     function generatePath(datasetName, dataset) {
-        const path = document.createElement("path");
+        var xmlns = "http://www.w3.org/2000/svg";
+        const path = document.createElementNS(xmlns, "path");
 
         let pathDefinition = "M0 " + dataset[0];
 
         for (let index = 1; index < dataset.length; index++) {
             const val = dataset[index];
-            pathDefinition += ` L${spaceBetween*index} ${val}`;
+            pathDefinition += ` L${this.spaceBetweenX*index} ${val}`;
         }
 
-        pathDefinition += " Z";
-
-        path.setAttribute("d") = pathDefinition;
-        path.setAttribute("id", datasetName);
+        path.setAttributeNS(null, "d", pathDefinition);
+        path.setAttributeNS(null, "id", datasetName);
+        path.setAttributeNS(null, "class", "chart-line");
+        path.setAttributeNS(null, "stroke", this.chartData.getColor(datasetName));
 
         return path;
     }
 
-    function generateSvg() {
-        const svg = document.createElement("svg");
+    function generateSvg(options) {
+        var xmlns = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(xmlns, "svg");
         
         for (let datasetName of Object.keys(this.chartData.datasets)) {
-            const path = generatePath(datasetName, this.chartData.datasets[datasetName]);
+            const path = generatePath.call(this, datasetName, this.chartData.datasets[datasetName]);
             svg.appendChild(path);
         }
 
@@ -139,9 +141,9 @@ const TgChart = (function () {
     TgChart.prototype.init = function(options) {
         this.spaceBetweenX = getSpaceBetweenX();
         
-        generateLayout.call(this, options);
+        this.layout = generateLayout.call(this, options);
         const svg = generateSvg.call(this);
-        this.container.appendChild(svg);
+        this.layout.chart.appendChild(svg);
     };
 
     return TgChart;

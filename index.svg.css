@@ -1,0 +1,155 @@
+:root {
+    box-sizing: border-box;
+
+    --theme-day-background: #fff;
+    --theme-day-font-color: #232323;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {    
+    background-color: #eee;
+    box-sizing: inherit;
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;    
+}
+
+.app {
+    background-color: var(--theme-day-background);
+    color: var(--theme-day-font-color);
+    max-width: 640px;
+    margin: auto;
+    height: 100%;
+}
+
+.chart {
+    padding: 20px;
+}
+
+.chart__title {    
+    padding: 0;
+    margin: 10px 0;
+}
+
+.chart__content {
+    margin: 0;
+    padding: 0;
+    height: 500px;
+    width: 100%;
+}
+
+.chart__content svg {
+    width: 100%;
+    height: 100%;
+}
+
+.chart__map {
+    position: relative;
+    height: 100px;
+    width: 100%;
+    padding: 0;
+    margin: 10px 0;    
+    z-index: 0;
+}
+
+.chart__map__canvas {
+    display: block;    
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.chart__map__window {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 75%;
+    border: 5px solid hsla(200, 43%, 97%, 0.7);
+    border-left-width: 10px;
+    border-right-width: 10px;
+}
+
+.chart__map__overlay__left {
+    z-index: 1;
+    background-color: hsla(200, 43%, 97%);
+    opacity: 0.3;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 100%;
+}
+
+.chart__map__overlay__right {
+    z-index: 1;
+    background-color: hsla(200, 43%, 97%);    
+    opacity: 0.3;
+    position: absolute;
+    top: 0;
+    left: 25%;
+    bottom: 0;
+    right: 0;
+}
+
+.chart__legend {
+    padding: 0;
+    margin: 10px 0;
+}
+
+.chart__legend__item {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #e6ecf0;
+    color: #43484b;
+    padding: 8px 16px 8px 10px;
+    margin-right: 10px;
+    border-radius: 20px;
+}
+
+.chart__legend__item__indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    margin-right: 10px;
+    background-color: #aaa;
+}
+
+#chart1__legend__item0 .chart__legend__item__indicator {
+    border-color: #3cc23f;
+    background-color: #3cc23f;
+}
+
+#chart1__legend__item1 .chart__legend__item__indicator {
+    border-color: #f34c44;
+    background-color: #f34c44;
+}
+
+.chart__legend__item__text {
+    display: inline-block;
+    
+}
+
+.chart-line {
+    stroke-width: 3px;
+    stroke-linecap: round;
+    fill: none;    
+}
+
