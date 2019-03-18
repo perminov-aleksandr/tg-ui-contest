@@ -34,6 +34,7 @@ body {
     max-width: 640px;
     margin: auto;
     min-height: 100%;
+    user-select: none;
 }
 
 .chart {
@@ -48,12 +49,16 @@ body {
 .chart__content {
     margin: 0;
     padding: 0;
-    height: 500px;
+    height: 0;
     width: 100%;
+    padding-top: 100%;
     position: relative;
 }
 
-.chart__content svg {
+.chart__content__lines {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     transform: scale(1, -1);
@@ -162,7 +167,14 @@ body {
 .chart-line {    
     stroke-width: 1pt;
     stroke-linecap: round;
-    fill: none;    
+    fill: none;
+    opacity: 1;
+
+    transition: opacity 0.2s linear;
+}
+
+.chart-line_hidden {
+    opacity: 0;
 }
 
 .scales {

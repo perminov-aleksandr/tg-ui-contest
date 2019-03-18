@@ -134,10 +134,11 @@ const ChartContent = (function(){
         this.maxXCoord = this.chartData.maxXCoord;
 
         this.svg = generateChartSvg.call(this);
+        this.svg.setAttributeNS(null, "class", "chart__content__lines")
         
         const scalesY = generateScalesY.call(this);
-        const scalesContainer = this.container.querySelector(".scales");        
-        scalesContainer.setAttributeNS(null, "preserveAspectRatio", "none");
+        //const scalesContainer = this.container.querySelector(".scales");        
+        //scalesContainer.setAttributeNS(null, "preserveAspectRatio", "none");
         scalesY.forEach((scaleY, index) => {            
             this.svg.appendChild(scaleY);
         });
@@ -230,25 +231,31 @@ const ChartMap = (function() {
     }
 
     function addEventListeners() {
-        this.container.addEventListener("mousedown", (e) => {
-            this.windowMoving = true;                        
+        const startListener = (ev) => {
+            this.windowMoving = true;
 
-            this.offsetX = this.window.offsetLeft - e.clientX;
-        });
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
+            this.offsetX = this.window.offsetLeft - clientX;
+            console.log(`start ${clientX}`);
+        };       
 
-        document.body.addEventListener("mouseup", () => {
+        const endHandler = () => {
             this.windowMoving = false;
-        });
+            console.log("stop");
+        };        
 
-        document.body.addEventListener("mousemove", (ev) => {
+        const moveHandler = (ev) => {
             if (!this.windowMoving)
                 return;
 
-            const chartMapWidth = this.window.parentElement.clientWidth;
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
 
-            let newX = ev.clientX + this.offsetX;
+            console.log(`${clientX}`);
+
+            const chartMapWidth = this.window.parentElement.clientWidth;
+            let newX = clientX + this.offsetX;
             if (newX < 0)
-                newX = 0;            
+                newX = 0;
             if (newX + this.window.clientWidth > this.window.parentElement.clientWidth)
                 newX = chartMapWidth - this.window.clientWidth;
             
@@ -262,10 +269,18 @@ const ChartMap = (function() {
                 detail: {
                     fromPercent,
                     toPercent
-                }                
+                }
             });
+
             document.dispatchEvent(windowMoveEvent);
-        });
+        };
+
+        this.container.addEventListener("mousedown", startListener);
+        this.container.addEventListener("touchstart", startListener);
+        document.body.addEventListener("mouseup", endHandler);
+        document.body.addEventListener("touchend", endHandler);
+        document.body.addEventListener("mousemove", moveHandler);
+        document.body.addEventListener("touchmove", moveHandler);
     }
 
     ChartMap.prototype.draw = function() {
@@ -290,7 +305,7 @@ const TgChart = (function () {
     function generateLayout({} = {}) {
         var chartElement = document.createElement("div");
         chartElement.className = "chart__content";
-        chartElement.innerHTML = "<svg class=\"scales\"></svg>";
+        //chartElement.innerHTML = "<svg class=\"scales\"></svg>";
         this.container.appendChild(chartElement);
         
         var chartMapElement = document.createElement("div");
@@ -320,8 +335,12 @@ const TgChart = (function () {
 
             var itemText = document.createElement("span");
             itemText.className = "chart__legend__item__text";
-            itemText.innerText = this.chartData.data.names[datasetName];
+            itemText.innerText = this.chartData.data.names[datasetName];            
             legendItem.appendChild(itemText);
+
+            legendItem.addEventListener("click", () => {
+                this.toggleDataset(datasetName);
+            });
 
             legendElement.appendChild(legendItem);
         }
@@ -350,7 +369,14 @@ const TgChart = (function () {
             this.content.setViewBoxX(ev.detail.fromPercent, ev.detail.toPercent);
             this.content.adjustViewBoxY(ev.detail.fromPercent, ev.detail.toPercent);
         });
+
+        this.content.setViewBoxX(0, 0.25);
+        this.content.adjustViewBoxY(0, 0.25);
     };
+
+    TgChart.prototype.toggleDataset = function(datasetName) {
+        
+    }
 
     return TgChart;
 })();
