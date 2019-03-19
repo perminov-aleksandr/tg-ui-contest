@@ -3,6 +3,8 @@
 
     --theme-day-background: #fff;
     --theme-day-font-color: #232323;
+    --transition-duration: 0.15s;
+    --transition-easing: ease-in-out;
 }
 
 html, body {
@@ -55,6 +57,24 @@ body {
     position: relative;
 }
 
+.chart__content:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(rgba(255,255,255, 1) 0%, rgba(255,255,255, 0) 10%);
+    z-index: 100;
+    
+    opacity: 0;
+    transition: opacity var(--transition-duration) var(--transition-easing);
+}
+
+.chart__content_animating:before {
+    opacity: 1;
+}
+
 .chart__content__lines {
     position: absolute;
     top: 0;
@@ -62,6 +82,7 @@ body {
     width: 100%;
     height: 100%;
     transform: scale(1, -1);
+    padding: 10px 0;
 }
 
 .chart__map {
@@ -91,6 +112,7 @@ body {
     border: 2px solid hsla(200, 43%, 95%, 0.7);
     border-left-width: 0;
     border-right-width: 0;
+    cursor: pointer;
 }
 
 .chart__map__window__border-left {
@@ -143,21 +165,43 @@ body {
 .chart__legend__item {
     display: inline-flex;
     align-items: center;
-    border: 1px solid #e6ecf0;
+    border: 2px solid #e6ecf0;
     color: #43484b;
     padding: 8px 16px 8px 10px;
     margin-right: 10px;
     border-radius: 20px;
+    cursor: pointer;
+}
+.chart__legend__item:hover {
+    background-color: #e6ecf0;
 }
 
 .chart__legend__item__indicator {
     display: inline-block;
     width: 20px;
     height: 20px;
-    border: 1px solid #aaa;
+    border: 2px solid #aaa;
     border-radius: 50%;
     margin-right: 10px;
     background-color: #aaa;
+    position: relative;
+}
+
+.chart__legend__item__indicator:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    border-radius: 50%;    
+    transition: transform var(--transition-duration) var(--transition-easing);
+    transform: scale(0, 0);
+}
+
+.chart__legend__item_hidden .chart__legend__item__indicator:after {    
+    transform: scale(1, 1);
 }
 
 .chart__legend__item__text {
@@ -165,15 +209,27 @@ body {
 }
 
 .chart-line {    
-    stroke-width: 1pt;
-    stroke-linecap: round;
+    stroke-width: 4px;
     fill: none;
     opacity: 1;
 
-    transition: opacity 0.2s linear;
+    transition: opacity var(--transition-duration) var(--transition-easing);
 }
 
 .chart-line_hidden {
+    opacity: 0;
+}
+
+.chart-map-line {
+    stroke-width: 2px;
+    fill: none;
+
+    opacity: 1;
+
+    transition: opacity var(--transition-duration) linear;
+}
+
+.chart-map-line_hidden {
     opacity: 0;
 }
 
@@ -187,7 +243,7 @@ body {
 
 .scale-y {
     stroke: #f2f4f5;
-    stroke-width: 1pt;
+    stroke-width: 3px;
     fill: none;
 }
 

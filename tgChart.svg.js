@@ -13,14 +13,17 @@ const ChartData = (function () {
         this.datasets = {};
         this.data.columns.forEach((column) => {        
             const name = column[0];
-            var dataset = column.slice(1, column.length);
+            var data = column.slice(1, column.length);
             if (name === "x")
-                this.x = dataset;            
+                this.x = data;            
             else
-                this.datasets[name] = dataset;
+                this.datasets[name] = { 
+                    data,
+                    name,
+                    visible: true
+                };
         });
 
-        this.maxY = this.findMaxY(this.datasets);
         this.spaceBetweenX = getSpaceBetweenX();
         this.maxXCoord = findMaxXCoord(this.x, this.spaceBetweenX);
     }
@@ -42,18 +45,24 @@ const ChartData = (function () {
     }
 
     ChartData.prototype.findMaxY = function(fromPercent = 0, toPercent = 1) {
-        let maxY = 0;
+        let result = 0;
         for (const datasetKey of Object.keys(this.datasets)) {
-            let datasetPart = this.datasets[datasetKey];
-            
+            if (!this.datasets[datasetKey].visible)
+                continue;
+
+            let datasetPart = this.datasets[datasetKey].data;                        
             datasetPart = datasetPart.slice(fromPercent * datasetPart.length, toPercent * datasetPart.length);
 
             const dataSetMax = Math.max.apply(Math, datasetPart);
-            if (dataSetMax > maxY)
-                maxY = dataSetMax;
+            if (dataSetMax > result)
+                result = dataSetMax;
         }
-        return maxY;
+        return result;
     }    
+
+    ChartData.prototype.toggleDatasetVisibility = function(datasetName) {
+        this.datasets[datasetName].visible = !this.datasets[datasetName].visible;
+    }
 
     return ChartData;    
 })();
@@ -61,27 +70,38 @@ const ChartData = (function () {
 const SvgHelpers = (function () {
     const svgNS = "http://www.w3.org/2000/svg";
 
-    const generateDatasetPath = function(datasetName, dataset, color, spaceBetweenX) {
-        const path = document.createElementNS(svgNS, "path");
+    const generateDatasetPath = function(datasetName, dataset, color, spaceBetweenX, lineClass) {
+        const path = document.createElementNS(svgNS, "polyline");
 
-        let pathDefinition = "M0 " + dataset[0];
+        let pathDefinition = "0 " + dataset[0] + "";
 
         for (let index = 1; index < dataset.length; index++) {
             const val = dataset[index];
-            pathDefinition += ` L${spaceBetweenX*index} ${val}`;
+            pathDefinition += `, ${spaceBetweenX*index} ${val}`;
         }
 
-        path.setAttributeNS(null, "d", pathDefinition);
+        path.setAttributeNS(null, "points", pathDefinition);
         path.setAttributeNS(null, "id", datasetName);
-        path.setAttributeNS(null, "class", "chart-line");
+        path.setAttributeNS(null, "class", lineClass);
         path.setAttributeNS(null, "stroke", color);
+        path.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
 
         return path;
     }
 
+    const setHeight = function (svg, height) {
+        svg.viewBox.baseVal.height = height;
+    }
+
+    const setWidth = function (svg, width) {
+        svg.viewBox.baseVal.width = width;
+    }
+
     return {
         svgNS,
-        generateDatasetPath
+        generateDatasetPath,
+        setWidth,
+        setHeight
     };
 })();
 
@@ -96,7 +116,7 @@ const ChartContent = (function(){
     function generateChartSvg(options) {        
         const svg = document.createElementNS(svgNS, "svg");        
         
-        svg.setAttributeNS(null, "viewBox", `0 0 ${0.25 * this.maxXCoord} ${this.chartData.maxY}`);
+        svg.setAttributeNS(null, "viewBox", `0 0 ${0.25 * this.maxXCoord} ${this.chartData.findMaxY()}`);
         svg.setAttributeNS(null, "preserveAspectRatio", "none");
 
         return svg;
@@ -104,7 +124,7 @@ const ChartContent = (function(){
 
     function generateScalesY() {
         const scalesYCount = 5;
-        let scalesYStep = Math.ceil(this.chartData.maxY / scalesYCount);
+        let scalesYStep = Math.ceil(this.chartData.findMaxY() / scalesYCount);
         scalesYStep -= (scalesYStep % 10);
 
         const result = [];
@@ -113,6 +133,7 @@ const ChartContent = (function(){
             const scaleValue = index * scalesYStep;
             path.setAttributeNS(null, "d", `M0 ${scaleValue} H${this.maxXCoord}`);
             path.setAttributeNS(null, "class", "scale-y");
+            path.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
 
             const text = document.createElementNS(svgNS, "text");
             text.append(scaleValue);
@@ -144,14 +165,14 @@ const ChartContent = (function(){
         });
 
         for (let datasetName of Object.keys(this.chartData.datasets)) {
-            const path = SvgHelpers.generateDatasetPath(datasetName, this.chartData.datasets[datasetName], this.chartData.getColor(datasetName), this.spaceBetweenX);
+            const path = SvgHelpers.generateDatasetPath(datasetName, this.chartData.datasets[datasetName].data, this.chartData.getColor(datasetName), this.spaceBetweenX, "chart-line");
             this.svg.appendChild(path);
         }
 
         this.container.appendChild(this.svg);
     }
 
-    const animationFunctions = {
+    const easingFunctions = {
         "linear": (t) => {
             return t;
         },
@@ -168,15 +189,49 @@ const ChartContent = (function(){
             newWidth = this.chartData.maxXCoord;
 
         this.svg.viewBox.baseVal.x = newX;
-        this.svg.viewBox.baseVal.width = newWidth;
+        SvgHelpers.setWidth(this.svg, newWidth);
     }
 
-    ChartContent.prototype.adjustViewBoxY = function(fromPercent, toPercent) {
-        const newHeight = this.chartData.findMaxY(fromPercent, toPercent);        
-        this.svg.viewBox.baseVal.height = 1.1 * newHeight;
+    ChartContent.prototype.adjustViewBoxY = function(fromPercent, toPercent, animate) {
+        if (typeof fromPercent !== "undefined") {
+            this.fromPercent = fromPercent;
+        }
+        else {
+            fromPercent = this.fromPercent;
+        }
+
+        if (typeof toPercent !== "undefined") {
+            this.toPercent = toPercent;
+        }
+        else {
+            toPercent = this.toPercent;
+        }
+
+        const newHeight = this.chartData.findMaxY(fromPercent, toPercent);
+
+        //console.log(`from ${fromPercent} to ${toPercent} maxHeight ${newHeight}`);
+
+        if (animate)
+            this.animateViewBoxY();
+        else
+            SvgHelpers.setHeight(this.svg, newHeight);
     }
 
-    ChartContent.prototype.animateViewBoxY = function (newY, animationDuration = 1000) {
+    ChartContent.prototype.animateViewBoxY = function (animationDuration = 100) {
+        const endAnimation = () => {
+            this.currentAnimation = null;
+            this.container.classList.remove("chart__content_animating");
+        };
+
+        if (this.currentAnimation) {
+            clearTimeout(this.currentAnimation);
+            endAnimation();
+        }
+
+        this.container.classList.add("chart__content_animating");
+
+        let newY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
+
         const fps = 60;
         const frameDuration = 1000 / fps;
         const totalFrames = animationDuration / frameDuration;
@@ -185,18 +240,29 @@ const ChartContent = (function(){
         const initialY = this.svg.viewBox.baseVal.height;
         const diffY = newY - initialY;
 
-        const animationFunction = animationFunctions["quadr"];
+        const easingFunction = easingFunctions["quadr"];
         
         const animateViewBoxFunc = () => {            
             currentFrame++;
 
-            this.svg.viewBox.baseVal.height = diffY * animationFunction(currentFrame / totalFrames) + initialY;
+            SvgHelpers.setHeight(this.svg, diffY * easingFunction(currentFrame / totalFrames) + initialY);
 
             if (currentFrame < totalFrames)
-                setTimeout(animateViewBoxFunc, totalFrames);
+                this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);            
+            else
+                endAnimation();
         };
-        setTimeout(animateViewBoxFunc, totalFrames);
+        this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);
     };
+
+    ChartContent.prototype.toggleDataset = function(datasetName) {
+        const datasetPath = this.svg.getElementById(datasetName);
+        datasetPath.classList.toggle("chart-line_hidden");
+
+        //this.adjustViewBoxY();
+
+        this.animateViewBoxY(200);
+    }
 
     return ChartContent;
 })();
@@ -211,7 +277,10 @@ const ChartMap = (function() {
         this.svg = document.createElementNS(SvgHelpers.svgNS, "svg");     
         this.svg.setAttributeNS(null, "class", "chart__map__canvas");
         this.svg.setAttributeNS(null, "preserveAspectRatio", "none");
-        this.svg.setAttributeNS(null, "viewBox", `0 0 ${this.chartData.maxXCoord} ${this.chartData.maxY}`);
+
+        SvgHelpers.setHeight(this.svg, this.chartData.findMaxY());
+        SvgHelpers.setWidth(this.svg, this.chartData.maxXCoord);
+
         this.container.appendChild(this.svg);
 
         this.window = this.container.querySelector(".chart__map__window");
@@ -236,12 +305,12 @@ const ChartMap = (function() {
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
             this.offsetX = this.window.offsetLeft - clientX;
-            console.log(`start ${clientX}`);
+            //console.log(`start ${clientX}`);
         };       
 
         const endHandler = () => {
             this.windowMoving = false;
-            console.log("stop");
+            //console.log("stop");
         };        
 
         const moveHandler = (ev) => {
@@ -250,7 +319,7 @@ const ChartMap = (function() {
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
 
-            console.log(`${clientX}`);
+            //console.log(`${clientX}`);
 
             const chartMapWidth = this.window.parentElement.clientWidth;
             let newX = clientX + this.offsetX;
@@ -287,9 +356,25 @@ const ChartMap = (function() {
         this.init();
 
         for (const datasetName of Object.keys(this.chartData.datasets)) {
-            const path = SvgHelpers.generateDatasetPath(datasetName, this.chartData.datasets[datasetName], this.chartData.getColor(datasetName), this.chartData.spaceBetweenX);
+            const path = SvgHelpers.generateDatasetPath(datasetName, 
+                this.chartData.datasets[datasetName].data, 
+                this.chartData.getColor(datasetName), 
+                this.chartData.spaceBetweenX, 
+                "chart-map-line");
             this.svg.appendChild(path);
         }
+    }
+
+    ChartMap.prototype.toggleDataset = function(datasetName) {
+        const datasetPath = this.svg.getElementById(datasetName);
+        datasetPath.classList.toggle("chart-map-line_hidden");
+
+        this.adjustViewBoxY();
+    }
+
+    ChartMap.prototype.adjustViewBoxY = function() {
+        const newHeight = this.chartData.findMaxY();
+        SvgHelpers.setHeight(this.svg, newHeight);
     }
 
     return ChartMap;
@@ -338,8 +423,8 @@ const TgChart = (function () {
             itemText.innerText = this.chartData.data.names[datasetName];            
             legendItem.appendChild(itemText);
 
-            legendItem.addEventListener("click", () => {
-                this.toggleDataset(datasetName);
+            legendItem.addEventListener("click", (ev) => {
+                this.toggleDataset(ev.currentTarget, datasetName);
             });
 
             legendElement.appendChild(legendItem);
@@ -367,15 +452,19 @@ const TgChart = (function () {
 
         document.addEventListener("windowmove", (ev) => {
             this.content.setViewBoxX(ev.detail.fromPercent, ev.detail.toPercent);
-            this.content.adjustViewBoxY(ev.detail.fromPercent, ev.detail.toPercent);
+            this.content.adjustViewBoxY(ev.detail.fromPercent, ev.detail.toPercent, true);
         });
 
         this.content.setViewBoxX(0, 0.25);
         this.content.adjustViewBoxY(0, 0.25);
     };
 
-    TgChart.prototype.toggleDataset = function(datasetName) {
-        
+    TgChart.prototype.toggleDataset = function(item, datasetName) {
+        item.classList.toggle("chart__legend__item_hidden");
+        this.chartData.toggleDatasetVisibility(datasetName);        
+
+        this.content.toggleDataset(datasetName);
+        this.chartMap.toggleDataset(datasetName);
     }
 
     return TgChart;
