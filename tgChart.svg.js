@@ -228,8 +228,6 @@ const ChartContent = (function(){
             endAnimation();
         }
 
-        this.container.classList.add("chart__content_animating");
-
         let newY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
 
         const fps = 60;
@@ -240,7 +238,12 @@ const ChartContent = (function(){
         const initialY = this.svg.viewBox.baseVal.height;
         const diffY = newY - initialY;
 
+        if (diffY === 0)
+            return;
+
         const easingFunction = easingFunctions["quadr"];
+
+        this.container.classList.add("chart__content_animating");
         
         const animateViewBoxFunc = () => {            
             currentFrame++;
