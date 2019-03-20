@@ -5,6 +5,7 @@
     --theme-day-font-color: #232323;
     --transition-duration: 0.15s;
     --transition-easing: ease-in-out;
+    --theme-day-map-background: hsl(200, 42%, 97%);
 }
 
 html, body {
@@ -85,78 +86,6 @@ body {
     padding: 10px 0;
 }
 
-.chart__map {
-    position: relative;
-    height: 100px;
-    width: 100%;
-    padding: 10px 0;
-    margin: 10px 0;    
-    z-index: 0;
-}
-
-.chart__map__canvas {
-    display: block;    
-    z-index: 0;
-    width: 100%;
-    height: 100%;
-    transform: scale(1, -1);
-}
-
-.chart__map__window {
-    z-index: 1;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 25%;
-    border: 2px solid hsla(200, 43%, 95%, 0.7);
-    border-left-width: 0;
-    border-right-width: 0;
-    cursor: pointer;
-}
-
-.chart__map__window__border-left {
-    position: absolute;
-    top: 0;    
-    bottom: 0;
-    width: 10px;
-    left: 0;
-
-    background-color: hsla(200, 43%, 95%, 0.7);
-}
-
-.chart__map__window__border-right {
-    position: absolute;
-    top: 0;    
-    bottom: 0;
-    width: 10px;
-    right: 0;
-
-    background-color: hsla(200, 43%, 97%, 0.7);
-}
-
-.chart__map__overlay__left {
-    z-index: 1;
-    background-color: hsla(200, 43%, 97%);
-    opacity: 0.3;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 100%;
-}
-
-.chart__map__overlay__right {
-    z-index: 1;
-    background-color: hsla(200, 43%, 97%);    
-    opacity: 0.3;
-    position: absolute;
-    top: 0;
-    left: 25%;
-    bottom: 0;
-    right: 0;
-}
-
 .chart__legend {
     padding: 0;
     margin: 10px 0;
@@ -171,9 +100,30 @@ body {
     margin-right: 10px;
     border-radius: 20px;
     cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
 }
-.chart__legend__item:hover {
+
+.chart__legend__item:after {
+    content: "";
+    display: inline-block;
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    left: 20px;
+    width: 200px;
+    height: 200px;
     background-color: #e6ecf0;
+    border-radius: 100px;
+    opacity: 0;
+
+    animation: none;
+}
+
+.chart__legend__item_animating:after {
+    animation: pulse 0.5s;
+    animation-timing-function: linear;
 }
 
 .chart__legend__item__indicator {
@@ -185,6 +135,7 @@ body {
     margin-right: 10px;
     background-color: #aaa;
     position: relative;
+    z-index: 1;
 }
 
 .chart__legend__item__indicator:after {
@@ -251,4 +202,80 @@ body {
     font: normal 14px Segoe UI;
     fill: #96a2aa;
     stroke: none;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.4;
+        transform: translate(-50%, -50%) scale(0.1, 0.1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.5, 0.5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1, 1);
+    }
+}
+
+.chart__map {
+    display: flex;
+    align-items: stretch;
+    height: 100px;
+    width: 100%;
+    background: white;
+    position: relative;
+    margin: 10px 0;    
+    z-index: 0;
+}
+
+.chart__map__canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    transform: scale(1, -1);
+    padding: 10px 0;
+}
+
+.chart__map__overlay-left {
+    z-index: 1;
+    width: 25%;
+    background-color: var(--theme-day-map-background);
+    opacity: 0.5;
+}
+
+.chart__map__overlay-right {
+    z-index: 1;
+    flex: 1;
+    background-color: var(--theme-day-map-background);
+    opacity: 0.5;
+}
+
+.chart__map__window {
+    z-index: 1;    
+    cursor: pointer;
+    width: calc(50% - 25% - 2 * 10px);
+    border: 2px solid hsla(200, 43%, 95%, 0.9);
+    border-left-width: 0;
+    border-right-width: 0;    
+}
+
+.chart__map__border-left {
+    z-index: 1;
+    width: 10px;
+    background-color: var(--theme-day-map-background);
+    opacity: 0.9;
+}
+
+.chart__map__border-right {
+    z-index: 1;
+    width: 10px;
+    background-color: var(--theme-day-map-background);
+    opacity: 0.9;
 }

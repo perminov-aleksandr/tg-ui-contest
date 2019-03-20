@@ -183,7 +183,7 @@ const ChartContent = (function(){
 
     ChartContent.prototype.setViewBoxX = function(fromPercent, toPercent) {
         const newX = fromPercent * this.chartData.maxXCoord;
-        const newWidth = (toPercent - fromPercent) * this.chartData.maxXCoord;
+        let newWidth = (toPercent - fromPercent) * this.chartData.maxXCoord;
 
         if (newWidth > this.chartData.maxXCoord)
             newWidth = this.chartData.maxXCoord;
@@ -221,11 +221,13 @@ const ChartContent = (function(){
         const endAnimation = () => {
             this.currentAnimation = null;
             this.container.classList.remove("chart__content_animating");
+            //console.log("animation ended");
         };
 
         if (this.currentAnimation) {
             clearTimeout(this.currentAnimation);
             endAnimation();
+            //console.log("animation cancelled");
         }
 
         let newY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
@@ -243,8 +245,6 @@ const ChartContent = (function(){
 
         const easingFunction = easingFunctions["quadr"];
 
-        this.container.classList.add("chart__content_animating");
-        
         const animateViewBoxFunc = () => {            
             currentFrame++;
 
@@ -254,8 +254,9 @@ const ChartContent = (function(){
                 this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);            
             else
                 endAnimation();
-        };
-        this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);
+        };        
+        this.currentAnimation = setTimeout(animateViewBoxFunc, frameDuration);
+        //console.log("animation started");
     };
 
     ChartContent.prototype.toggleDataset = function(datasetName) {
@@ -264,7 +265,7 @@ const ChartContent = (function(){
 
         //this.adjustViewBoxY();
 
-        this.animateViewBoxY(200);
+        this.animateViewBoxY(150);
     }
 
     return ChartContent;
@@ -286,24 +287,32 @@ const ChartMap = (function() {
 
         this.container.appendChild(this.svg);
 
-        this.window = this.container.querySelector(".chart__map__window");
+        this.overlayLeft = document.createElement("div");
+        this.overlayLeft.className = "chart__map__overlay-left";
+        this.container.appendChild(this.overlayLeft);
 
         this.borderLeft = document.createElement("div");
-        this.borderLeft.className = "chart__map__window__border-left";        
-        this.window.appendChild(this.borderLeft);
+        this.borderLeft.className = "chart__map__border-left";
+        this.container.appendChild(this.borderLeft);
+
+        this.window = document.createElement("div");
+        this.window.className = "chart__map__window";
+        this.container.appendChild(this.window);
 
         this.borderRight = document.createElement("div");
-        this.borderRight.className = "chart__map__window__border-right";
-        this.window.appendChild(this.borderRight);
+        this.borderRight.className = "chart__map__border-right";
+        this.container.appendChild(this.borderRight);
 
-        this.overlayLeft = this.container.querySelector(".chart__map__overlay__left");
-        this.overlayRight = this.container.querySelector(".chart__map__overlay__right");
+        this.overlayRight = document.createElement("div");
+        this.overlayRight.className = "chart__map__overlay-right";
+        this.container.appendChild(this.overlayRight);
 
-        addEventListeners.call(this);
+        addMoveEventListeners.call(this);
+        addResizeEventListeners.call(this);
     }
-
-    function addEventListeners() {
-        const startListener = (ev) => {
+    
+    function addMoveEventListeners() {
+        const startHandler = (ev) => {
             this.windowMoving = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
@@ -324,13 +333,71 @@ const ChartMap = (function() {
 
             //console.log(`${clientX}`);
 
+            var {fromPercent, toPercent} = calcNewPercents(clientX + this.offsetX, this.container.clientWidth, this.window.clientWidth);
+
+            this.overlayLeft.style.width = (fromPercent*100) + "%";
+            this.window.style.width = `calc(${toPercent*100} - ${fromPercent*100} - ${this.borderLeft.style.width} - ${this.borderRight.style.width})`;
+            
+            const windowMoveEvent = new CustomEvent("windowmove", {
+                detail: {
+                    fromPercent,
+                    toPercent
+                }
+            });
+
+            document.dispatchEvent(windowMoveEvent);
+        };
+
+        this.window.addEventListener("mousedown", startHandler);
+        this.window.addEventListener("touchstart", startHandler);        
+        document.body.addEventListener("mouseup", endHandler);
+        document.body.addEventListener("touchend", endHandler);
+        document.body.addEventListener("mousemove", moveHandler);
+        document.body.addEventListener("touchmove", moveHandler);
+    }
+
+    function calcNewPercents(newX, mapWidth, windowWidth) {        
+        if (newX < 0)
+            newX = 0;       
+
+        const maxX = mapWidth - windowWidth;
+        if (newX > maxX)
+            newX = maxX;
+        
+        const fromPercent = newX / mapWidth;
+        const toPercent = (newX + windowWidth) / mapWidth;
+
+        return {
+            fromPercent, 
+            toPercent
+        };
+    }
+
+    function addResizeEventListeners() {
+        const startLeftHandler = (ev) => {
+            this.windowResizing = true;
+
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
+            this.offsetX = this.borderLeft.offsetLeft - clientX;            
+        };       
+
+        const endLeftHandler = () => {
+            this.windowResizing = false;            
+        };
+
+        const moveLeftHandler = (ev) => {
+            if (!this.windowResizing)
+                return;
+
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
+
             const chartMapWidth = this.window.parentElement.clientWidth;
             let newX = clientX + this.offsetX;
             if (newX < 0)
                 newX = 0;
             if (newX + this.window.clientWidth > this.window.parentElement.clientWidth)
                 newX = chartMapWidth - this.window.clientWidth;
-            
+
             this.window.style.left = newX + "px";
             this.overlayLeft.style.right = (chartMapWidth - newX) + "px";
             this.overlayRight.style.left = (newX + this.window.clientWidth) + "px";
@@ -345,14 +412,12 @@ const ChartMap = (function() {
             });
 
             document.dispatchEvent(windowMoveEvent);
-        };
+        }
 
-        this.container.addEventListener("mousedown", startListener);
-        this.container.addEventListener("touchstart", startListener);
-        document.body.addEventListener("mouseup", endHandler);
-        document.body.addEventListener("touchend", endHandler);
-        document.body.addEventListener("mousemove", moveHandler);
-        document.body.addEventListener("touchmove", moveHandler);
+        this.borderLeft.addEventListener("mousedown", startLeftHandler);
+        //this.borderRight.addEventListener("mousedown", startRightHandler);
+        document.body.addEventListener("mouseup", endLeftHandler);
+        document.body.addEventListener("mousemove", moveLeftHandler);
     }
 
     ChartMap.prototype.draw = function() {
@@ -398,14 +463,6 @@ const TgChart = (function () {
         
         var chartMapElement = document.createElement("div");
         chartMapElement.className = "chart__map";
-        chartMapElement.innerHTML += "<div class='chart__map__overlay__left'></div>";
-
-        var chartMapWindow = document.createElement("div");
-        chartMapWindow.className = "chart__map__window";
-        chartMapElement.appendChild(chartMapWindow);
-
-        chartMapElement.innerHTML += "<div class='chart__map__overlay__right'></div>";
-
         this.container.appendChild(chartMapElement);
 
         var legendElement = document.createElement("div");
@@ -464,6 +521,10 @@ const TgChart = (function () {
 
     TgChart.prototype.toggleDataset = function(item, datasetName) {
         item.classList.toggle("chart__legend__item_hidden");
+        item.classList.add("chart__legend__item_animating");
+        setTimeout(() => {
+            item.classList.remove("chart__legend__item_animating");
+        }, 500);
         this.chartData.toggleDatasetVisibility(datasetName);        
 
         this.content.toggleDataset(datasetName);
