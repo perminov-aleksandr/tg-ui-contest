@@ -333,10 +333,10 @@ const ChartMap = (function() {
 
             //console.log(`${clientX}`);
 
-            var {fromPercent, toPercent} = calcNewPercents(clientX + this.offsetX, this.container.clientWidth, this.window.clientWidth);
+            const windowWidth = this.window.clientWidth + this.borderLeft.clientWidth + this.borderRight.clientWidth;
+            var {fromPercent, toPercent} = calcNewPercents(clientX + this.offsetX, this.container.clientWidth, windowWidth);
 
-            this.overlayLeft.style.width = (fromPercent*100) + "%";
-            this.window.style.width = `calc(${toPercent*100} - ${fromPercent*100} - ${this.borderLeft.style.width} - ${this.borderRight.style.width})`;
+            setFromTo.call(this, fromPercent, toPercent);
             
             const windowMoveEvent = new CustomEvent("windowmove", {
                 detail: {
@@ -373,37 +373,46 @@ const ChartMap = (function() {
         };
     }
 
+    function setFromTo(fromPercent, toPercent) {
+        this.overlayLeft.style.width = `${fromPercent*100}%`;
+        let newWindowWidth = toPercent - fromPercent;
+        if (newWindowWidth < 0.1)
+            newWindowWidth = 0.1;
+        this.window.style.width = `calc(${newWindowWidth*100}% - ${this.borderLeft.clientWidth + this.borderRight.clientWidth}px)`;
+    }
+
     function addResizeEventListeners() {
-        const startLeftHandler = (ev) => {
+        const startHandler = (ev) => {
             this.windowResizing = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
-            this.offsetX = this.borderLeft.offsetLeft - clientX;            
+            this.offsetX = this.borderLeft.offsetLeft - clientX;
         };       
 
-        const endLeftHandler = () => {
+        const endHandler = () => {
             this.windowResizing = false;            
         };
 
-        const moveLeftHandler = (ev) => {
+        const moveHandler = (ev) => {
             if (!this.windowResizing)
                 return;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
 
-            const chartMapWidth = this.window.parentElement.clientWidth;
-            let newX = clientX + this.offsetX;
+            var newX = clientX + this.offsetX;
             if (newX < 0)
                 newX = 0;
-            if (newX + this.window.clientWidth > this.window.parentElement.clientWidth)
-                newX = chartMapWidth - this.window.clientWidth;
 
-            this.window.style.left = newX + "px";
-            this.overlayLeft.style.right = (chartMapWidth - newX) + "px";
-            this.overlayRight.style.left = (newX + this.window.clientWidth) + "px";
+            const windowWidth = this.window.clientWidth + this.borderLeft.clientWidth + this.borderRight.clientWidth;
+            const maxX = this.borderRight.offsetLeft + this.borderRight.clientWidth;
+            if (newX > maxX)
+                newX = maxX;
 
-            const fromPercent = newX / this.window.parentElement.clientWidth;
-            const toPercent = (newX + this.window.clientWidth) / this.window.parentElement.clientWidth;
+            const fromPercent = newX / this.container.clientWidth;
+            const toPercent = (this.borderLeft.offsetLeft + windowWidth) / this.container.clientWidth;
+
+            setFromTo.call(this, fromPercent, toPercent);
+            
             const windowMoveEvent = new CustomEvent("windowmove", {
                 detail: {
                     fromPercent,
@@ -414,10 +423,10 @@ const ChartMap = (function() {
             document.dispatchEvent(windowMoveEvent);
         }
 
-        this.borderLeft.addEventListener("mousedown", startLeftHandler);
-        //this.borderRight.addEventListener("mousedown", startRightHandler);
-        document.body.addEventListener("mouseup", endLeftHandler);
-        document.body.addEventListener("mousemove", moveLeftHandler);
+        this.borderLeft.addEventListener("mousedown", startHandler);
+        this.borderRight.addEventListener("mousedown", startHandler);
+        document.body.addEventListener("mouseup", endHandler);
+        document.body.addEventListener("mousemove", moveHandler);
     }
 
     ChartMap.prototype.draw = function() {
