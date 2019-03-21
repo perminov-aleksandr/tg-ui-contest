@@ -1,0 +1,45 @@
+.app.theme-night {
+    background-color: var(--theme-night-background);
+    color: var(--theme-night-font-color);
+}
+
+.theme-night .chart__legend__item {    
+    border: 2px solid var(--theme-night-legend-item-border-color);
+    color: var(--theme-night-legend-item-font-color);
+}
+
+.theme-night .chart__legend__item:after {
+    background-color: var(--theme-night-legend-item-border-color);
+}
+
+.theme-night .chart__legend__item__indicator:after {
+    background-color: var(--theme-night-background);
+}
+
+.theme-night .scale-y {  
+    stroke: var(--theme-night-scale-color);
+}
+
+.theme-night .scale-y__text {
+    fill: var(--theme-night-scale-text-color);
+}
+
+.theme-night .chart__map__window {
+    border-color: var(--theme-night-map-window-border-color);
+}
+
+.theme-night .chart__map__overlay-left {
+    background-color: var(--theme-night-map-overlay-background);
+}
+
+.theme-night .chart__map__overlay-right {
+    background-color: var(--theme-night-map-overlay-background);
+}
+
+.theme-night .chart__map__border-left {
+    background-color: var(--theme-night-map-border-color);
+}
+
+.theme-night .chart__map__border-right {
+    background-color: var(--theme-night-map-border-color);
+}

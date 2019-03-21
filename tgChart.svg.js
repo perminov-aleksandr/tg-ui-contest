@@ -553,6 +553,14 @@ const TgChart = (function () {
 
         this.container.appendChild(legendElement);
 
+        const switchThemeButton = document.createElement("div");
+        switchThemeButton.className = "switch-theme-button";
+        switchThemeButton.innerText = "Switch Mode";        
+        switchThemeButton.addEventListener("click", () => {
+            document.querySelector(".app").classList.toggle("theme-night");
+        });
+        this.container.appendChild(switchThemeButton);
+
         return {
             chartMap: chartMapElement,
             chart: chartElement,
