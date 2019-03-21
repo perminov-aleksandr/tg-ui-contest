@@ -474,11 +474,18 @@ const ChartMap = (function() {
         }
 
         this.borderLeft.addEventListener("mousedown", startLeftHandler);
-        this.borderRight.addEventListener("mousedown", startRightHandler);        
+        this.borderRight.addEventListener("mousedown", startRightHandler);
         document.body.addEventListener("mousemove", moveLeftHandler);
         document.body.addEventListener("mousemove", moveRightHandler);
         document.body.addEventListener("mouseup", endLeftHandler);
         document.body.addEventListener("mouseup", endRightHandler);
+
+        this.borderLeft.addEventListener("touchstart", startLeftHandler);
+        this.borderRight.addEventListener("touchstart", startRightHandler);
+        document.body.addEventListener("touchmove", moveLeftHandler);
+        document.body.addEventListener("touchmove", moveRightHandler);
+        document.body.addEventListener("touchend", endLeftHandler);
+        document.body.addEventListener("touchend", endRightHandler);
     }
 
     ChartMap.prototype.draw = function() {
