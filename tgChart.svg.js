@@ -374,27 +374,37 @@ const ChartMap = (function() {
     }
 
     function setFromTo(fromPercent, toPercent) {
-        this.overlayLeft.style.width = `${fromPercent*100}%`;
-        let newWindowWidth = toPercent - fromPercent;
-        if (newWindowWidth < 0.1)
-            newWindowWidth = 0.1;
-        this.window.style.width = `calc(${newWindowWidth*100}% - ${this.borderLeft.clientWidth + this.borderRight.clientWidth}px)`;
+        this.overlayLeft.style.width = `${fromPercent*100}%`;        
+        this.window.style.width = `calc(${(toPercent - fromPercent)*100}% - ${this.borderLeft.clientWidth + this.borderRight.clientWidth}px)`;
     }
 
     function addResizeEventListeners() {
-        const startHandler = (ev) => {
-            this.windowResizing = true;
+        const startLeftHandler = (ev) => {
+            this.windowResizingLeft = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
             this.offsetX = this.borderLeft.offsetLeft - clientX;
-        };       
-
-        const endHandler = () => {
-            this.windowResizing = false;            
         };
 
-        const moveHandler = (ev) => {
-            if (!this.windowResizing)
+        const startRightHandler = (ev) => {
+            this.windowResizingRight = true;
+
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
+            this.offsetX = this.borderRight.offsetLeft - clientX;
+        };
+
+        const endLeftHandler = () => {
+            this.windowResizingLeft = false;            
+        };
+
+        const endRightHandler = () => {
+            this.windowResizingRight = false;            
+        };
+
+        const minWidth = 0.1;
+
+        const moveLeftHandler = (ev) => {
+            if (!this.windowResizingLeft)
                 return;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
@@ -408,8 +418,12 @@ const ChartMap = (function() {
             if (newX > maxX)
                 newX = maxX;
 
-            const fromPercent = newX / this.container.clientWidth;
+            let fromPercent = newX / this.container.clientWidth;
             const toPercent = (this.borderLeft.offsetLeft + windowWidth) / this.container.clientWidth;
+
+            let newWindowWidth = toPercent - fromPercent;
+            if (newWindowWidth < minWidth)
+                fromPercent = toPercent - minWidth;
 
             setFromTo.call(this, fromPercent, toPercent);
             
@@ -423,10 +437,48 @@ const ChartMap = (function() {
             document.dispatchEvent(windowMoveEvent);
         }
 
-        this.borderLeft.addEventListener("mousedown", startHandler);
-        this.borderRight.addEventListener("mousedown", startHandler);
-        document.body.addEventListener("mouseup", endHandler);
-        document.body.addEventListener("mousemove", moveHandler);
+        const moveRightHandler = (ev) => {
+            if (!this.windowResizingRight)
+                return;
+
+            const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
+
+            const windowWidth = this.window.clientWidth + this.borderLeft.clientWidth + this.borderRight.clientWidth;
+
+            var newX = clientX + this.offsetX;
+            const minX = this.borderLeft.offsetLeft + 0.1 * windowWidth;
+            if (newX < minX)
+                newX = minX;
+            
+            const maxX = this.container.clientWidth;
+            if (newX > maxX)
+                newX = maxX;
+
+            const fromPercent = this.borderLeft.offsetLeft / this.container.clientWidth;
+            let toPercent = newX / this.container.clientWidth;
+
+            let newWindowWidth = toPercent - fromPercent;            
+            if (newWindowWidth < minWidth)
+                toPercent = fromPercent + minWidth;
+
+            setFromTo.call(this, fromPercent, toPercent);
+            
+            const windowMoveEvent = new CustomEvent("windowmove", {
+                detail: {
+                    fromPercent,
+                    toPercent
+                }
+            });
+
+            document.dispatchEvent(windowMoveEvent);
+        }
+
+        this.borderLeft.addEventListener("mousedown", startLeftHandler);
+        this.borderRight.addEventListener("mousedown", startRightHandler);        
+        document.body.addEventListener("mousemove", moveLeftHandler);
+        document.body.addEventListener("mousemove", moveRightHandler);
+        document.body.addEventListener("mouseup", endLeftHandler);
+        document.body.addEventListener("mouseup", endRightHandler);
     }
 
     ChartMap.prototype.draw = function() {
