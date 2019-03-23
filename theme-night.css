@@ -24,6 +24,10 @@
     fill: var(--theme-night-scale-text-color);
 }
 
+.theme-night .scale-y-text {
+    color: var(--theme-night-scale-text-color);
+}
+
 .theme-night .chart__map__window {
     border-color: var(--theme-night-map-window-border-color);
 }

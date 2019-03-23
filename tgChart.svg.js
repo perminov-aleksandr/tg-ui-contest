@@ -1,6 +1,6 @@
 const ChartData = (function () {
     function getSpaceBetweenX() {
-        return 10;
+        return 20;
     }
 
     function findMaxXCoord(x, spaceBetweenX) {
@@ -11,11 +11,11 @@ const ChartData = (function () {
         this.data = data;
 
         this.datasets = {};
-        this.data.columns.forEach((column) => {        
+        this.data.columns.forEach((column) => {
             const name = column[0];
             var data = column.slice(1, column.length);
             if (name === "x")
-                this.x = data;            
+                this.x = data;
             else
                 this.datasets[name] = { 
                     data,
@@ -30,27 +30,38 @@ const ChartData = (function () {
 
     ChartData.prototype.getColor = function (datasetName) {
         return this.data.colors[datasetName];
-    }
+    };
 
+    /**
+     * @returns {Array<number>} array of x
+     */
     ChartData.prototype.getX = function () {
         return this.x;
-    }
+    };
 
+    /**
+     * @returns {Array<string>} array of x values formatted to display
+     */
     ChartData.prototype.getDisplayedX = () => {
         return this.getX().map((x) => new Date(x).toLocaleDateString("en-US",
             {
                 day: "numeric",
                 month: "short"
             }));
-    }
+    };
 
+    /**
+     * @param {number} fromPercent start search from
+     * @param {number} toPercent search to
+     * @returns {number} max y coord
+     */
     ChartData.prototype.findMaxY = function(fromPercent = 0, toPercent = 1) {
         let result = 0;
         for (const datasetKey of Object.keys(this.datasets)) {
             if (!this.datasets[datasetKey].visible)
                 continue;
 
-            let datasetPart = this.datasets[datasetKey].data;                        
+            let datasetPart = this.datasets[datasetKey].data;
             datasetPart = datasetPart.slice(fromPercent * datasetPart.length, toPercent * datasetPart.length);
 
             const dataSetMax = Math.max.apply(Math, datasetPart);
@@ -58,11 +69,11 @@ const ChartData = (function () {
                 result = dataSetMax;
         }
         return result;
-    }    
+    };    
 
     ChartData.prototype.toggleDatasetVisibility = function(datasetName) {
         this.datasets[datasetName].visible = !this.datasets[datasetName].visible;
-    }
+    };
 
     return ChartData;    
 })();
@@ -87,15 +98,15 @@ const SvgHelpers = (function () {
         path.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
 
         return path;
-    }
+    };
 
     const setHeight = function (svg, height) {
         svg.viewBox.baseVal.height = height;
-    }
+    };
 
     const setWidth = function (svg, width) {
         svg.viewBox.baseVal.width = width;
-    }
+    };
 
     return {
         svgNS,
@@ -106,6 +117,11 @@ const SvgHelpers = (function () {
 })();
 
 const ChartContent = (function(){
+
+    /**
+     * @param {HTMLElement} container element to contain chart
+     * @param {ChartData} chartData data of chart
+     */
     function ChartContent(container, chartData) {
         this.chartData = chartData;
         this.container = container;
@@ -113,41 +129,106 @@ const ChartContent = (function(){
 
     const svgNS = SvgHelpers.svgNS;
 
-    function generateChartSvg(options) {        
-        const svg = document.createElementNS(svgNS, "svg");        
+    /**     
+     * @returns {Element} svg element
+     */
+    function generateChartSvg() {
+        const svg = document.createElementNS(svgNS, "svg");
         
         svg.setAttributeNS(null, "viewBox", `0 0 ${0.25 * this.maxXCoord} ${this.chartData.findMaxY()}`);
         svg.setAttributeNS(null, "preserveAspectRatio", "none");
 
+        this.fromPercent = null;
+        this.toPercent = null;
+
         return svg;
     }
+    
+    function getFirstTwoDigits(n) {
+        let i = 0;
+        while (n > 100) {
+            n /= 10;
+            i++;
+        }
+        n = Math.floor(n);
+        return {n, i};
+    }
 
-    function generateScalesY() {
-        const scalesYCount = 5;
-        let scalesYStep = Math.ceil(this.chartData.findMaxY() / scalesYCount);
-        scalesYStep -= (scalesYStep % 10);
+    function generateScalesYValues (fromPercent = 0, toPercent = 1, scalesYCount = 5) {
+        let maxY = this.chartData.findMaxY(fromPercent, toPercent);
+
+        let {n, i} = getFirstTwoDigits(maxY);
+        maxY = n * Math.pow(10, i);
+
+        let scalesYStep = Math.round(maxY / scalesYCount);
 
         const result = [];
         for (let index = 0; index <= scalesYCount; index++) {
-            const path = document.createElementNS(svgNS, "path");
             const scaleValue = index * scalesYStep;
+            result.push(scaleValue);
+        }
+        return result;
+    }
+
+    function generateScalesYLines(scalesValues) {
+        const result = [];
+        scalesValues.forEach((scaleValue) => {
+            const path = document.createElementNS(svgNS, "path");
             path.setAttributeNS(null, "d", `M0 ${scaleValue} H${this.maxXCoord}`);
             path.setAttributeNS(null, "class", "scale-y");
             path.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
 
-            const text = document.createElementNS(svgNS, "text");
-            text.append(scaleValue);
-            text.setAttributeNS(null, "x", 0);
-            text.setAttributeNS(null, "y", scaleValue);
-            text.setAttributeNS(null, "class", "scale-y__text");
-
-            const group = document.createElementNS(svgNS, "g");
-            group.appendChild(path);
-            //group.appendChild(text);
-
-            result.push(group);
-        }        
+            result.push(path);
+        });
         return result;
+    }
+
+    function clearScales() {
+        const scalesLines = this.svg.querySelectorAll(".scale-y");
+        scalesLines.forEach((line) => {
+            //line.classList.add("scale-y_hidden");
+            //setTimeout(() => {
+                this.svg.removeChild(line);
+            //}, 500);
+        });
+
+        this.scalesTextContainer.innerHTML = "";
+
+        /*const scaleText = this.scalesTextContainer.querySelectorAll(".stale-y-text");
+        scaleText.forEach((scaleText) => {
+            //scaleText.classList.add("scale-y-text_hidden");
+            //setTimeout(() => {
+                this.scalesTextContainer.removeChild(scaleText);
+            //}, 500);
+        });*/
+    }
+
+    function generateScalesY(fromPercent = 0, toPercent = 1) {
+        clearScales.call(this);
+
+        const scalesYValues = generateScalesYValues.call(this, fromPercent, toPercent);
+        const lines = generateScalesYLines.call(this, scalesYValues);
+        lines.forEach((line) => {
+            this.svg.insertBefore(line, this.svg.firstChild);
+        });
+
+        const maxY = this.chartData.findMaxY(fromPercent, toPercent);
+        scalesYValues.forEach((scaleYValue) => {
+            const scalePosition = getScaleYPositionFromValue(scaleYValue, maxY);
+            const text = formatScaleYValue(scaleYValue);
+            this.scalesTextContainer.innerHTML += `<span class="scale-y-text" style="bottom: ${scalePosition}%">${text}</span>`;
+        });
+    }
+
+    function formatScaleYValue(value) {
+        let result = value;
+        if (value / 1000 > 1)
+            result = `${Math.floor(value / 1000)}k`;
+        return result;
+    }
+
+    function getScaleYPositionFromValue(value, maxY) {
+        return value / maxY * 100;
     }
 
     ChartContent.prototype.draw = function () {
@@ -155,22 +236,21 @@ const ChartContent = (function(){
         this.maxXCoord = this.chartData.maxXCoord;
 
         this.svg = generateChartSvg.call(this);
-        this.svg.setAttributeNS(null, "class", "chart__content__lines")
-        
-        const scalesY = generateScalesY.call(this);
-        //const scalesContainer = this.container.querySelector(".scales");        
-        //scalesContainer.setAttributeNS(null, "preserveAspectRatio", "none");
-        scalesY.forEach((scaleY, index) => {            
-            this.svg.appendChild(scaleY);
-        });
+        this.svg.setAttributeNS(null, "class", "chart__content__lines");
 
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             const path = SvgHelpers.generateDatasetPath(datasetName, this.chartData.datasets[datasetName].data, this.chartData.getColor(datasetName), this.spaceBetweenX, "chart-line");
             this.svg.appendChild(path);
         }
 
+        const scalesTextContainer = document.createElement("div");
+        scalesTextContainer.className = "scales";
+        this.scalesTextContainer = scalesTextContainer;
+        this.container.append(scalesTextContainer);
+        generateScalesY.call(this);
+
         this.container.appendChild(this.svg);
-    }
+    };
 
     const easingFunctions = {
         "linear": (t) => {
@@ -179,8 +259,12 @@ const ChartContent = (function(){
         "quadr": (t) => {
             return t*t;
         }
-    }
+    };
 
+    /**
+     * @param {number} fromPercent new start X
+     * @param {number} toPercent new end X
+     */
     ChartContent.prototype.setViewBoxX = function(fromPercent, toPercent) {
         const newX = fromPercent * this.chartData.maxXCoord;
         let newWidth = (toPercent - fromPercent) * this.chartData.maxXCoord;
@@ -190,8 +274,13 @@ const ChartContent = (function(){
 
         this.svg.viewBox.baseVal.x = newX;
         SvgHelpers.setWidth(this.svg, newWidth);
-    }
+    };
 
+    /**
+     * @param {number} fromPercent new start X
+     * @param {number} toPercent new end X
+     * @param {boolean} animate perform with animation
+     */
     ChartContent.prototype.adjustViewBoxY = function(fromPercent, toPercent, animate) {
         if (typeof fromPercent !== "undefined") {
             this.fromPercent = fromPercent;
@@ -209,13 +298,13 @@ const ChartContent = (function(){
 
         const newHeight = this.chartData.findMaxY(fromPercent, toPercent);
 
-        //console.log(`from ${fromPercent} to ${toPercent} maxHeight ${newHeight}`);
-
         if (animate)
             this.animateViewBoxY();
         else
             SvgHelpers.setHeight(this.svg, newHeight);
-    }
+
+        generateScalesY.call(this, this.fromPercent, this.toPercent);
+    };
 
     ChartContent.prototype.animateViewBoxY = function (animationDuration = 100) {
         const endAnimation = () => {
@@ -263,10 +352,8 @@ const ChartContent = (function(){
         const datasetPath = this.svg.getElementById(datasetName);
         datasetPath.classList.toggle("chart-line_hidden");
 
-        //this.adjustViewBoxY();
-
-        this.animateViewBoxY(150);
-    }
+        this.adjustViewBoxY(this.fromPercent, this.toPercent, true);
+    };
 
     return ChartContent;
 })();
@@ -277,8 +364,8 @@ const ChartMap = (function() {
         this.chartData = chartData;
     };
 
-    ChartMap.prototype.init = function() {        
-        this.svg = document.createElementNS(SvgHelpers.svgNS, "svg");     
+    ChartMap.prototype.init = function() {
+        this.svg = document.createElementNS(SvgHelpers.svgNS, "svg");
         this.svg.setAttributeNS(null, "class", "chart__map__canvas");
         this.svg.setAttributeNS(null, "preserveAspectRatio", "none");
 
@@ -309,10 +396,11 @@ const ChartMap = (function() {
 
         addMoveEventListeners.call(this);
         addResizeEventListeners.call(this);
-    }
+    };
     
     function addMoveEventListeners() {
         const startHandler = (ev) => {
+            ev.preventDefault();
             this.windowMoving = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
@@ -320,7 +408,8 @@ const ChartMap = (function() {
             //console.log(`start ${clientX}`);
         };       
 
-        const endHandler = () => {
+        const endHandler = (ev) => {
+            ev.preventDefault();
             this.windowMoving = false;
             //console.log("stop");
         };        
@@ -345,11 +434,11 @@ const ChartMap = (function() {
                 }
             });
 
-            document.dispatchEvent(windowMoveEvent);
+            this.container.dispatchEvent(windowMoveEvent);
         };
 
         this.window.addEventListener("mousedown", startHandler);
-        this.window.addEventListener("touchstart", startHandler);        
+        this.window.addEventListener("touchstart", startHandler);
         document.body.addEventListener("mouseup", endHandler);
         document.body.addEventListener("touchend", endHandler);
         document.body.addEventListener("mousemove", moveHandler);
@@ -380,6 +469,7 @@ const ChartMap = (function() {
 
     function addResizeEventListeners() {
         const startLeftHandler = (ev) => {
+            ev.preventDefault();
             this.windowResizingLeft = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
@@ -387,18 +477,21 @@ const ChartMap = (function() {
         };
 
         const startRightHandler = (ev) => {
+            ev.preventDefault();
             this.windowResizingRight = true;
 
             const clientX = ev instanceof TouchEvent ? ev.touches[0].clientX : ev.clientX;
             this.offsetX = this.borderRight.offsetLeft - clientX;
         };
 
-        const endLeftHandler = () => {
+        const endLeftHandler = (ev) => {
+            ev.preventDefault();
             this.windowResizingLeft = false;            
         };
 
-        const endRightHandler = () => {
-            this.windowResizingRight = false;            
+        const endRightHandler = (ev) => {
+            ev.preventDefault();
+            this.windowResizingRight = false;
         };
 
         const minWidth = 0.1;
@@ -434,8 +527,8 @@ const ChartMap = (function() {
                 }
             });
 
-            document.dispatchEvent(windowMoveEvent);
-        }
+            this.container.dispatchEvent(windowMoveEvent);
+        };
 
         const moveRightHandler = (ev) => {
             if (!this.windowResizingRight)
@@ -470,8 +563,8 @@ const ChartMap = (function() {
                 }
             });
 
-            document.dispatchEvent(windowMoveEvent);
-        }
+            this.container.dispatchEvent(windowMoveEvent);
+        };
 
         this.borderLeft.addEventListener("mousedown", startLeftHandler);
         this.borderRight.addEventListener("mousedown", startRightHandler);
@@ -499,31 +592,36 @@ const ChartMap = (function() {
                 "chart-map-line");
             this.svg.appendChild(path);
         }
-    }
+    };
 
     ChartMap.prototype.toggleDataset = function(datasetName) {
         const datasetPath = this.svg.getElementById(datasetName);
         datasetPath.classList.toggle("chart-map-line_hidden");
 
         this.adjustViewBoxY();
-    }
+    };
 
     ChartMap.prototype.adjustViewBoxY = function() {
         const newHeight = this.chartData.findMaxY();
         SvgHelpers.setHeight(this.svg, newHeight);
-    }
+    };
 
     return ChartMap;
 })();
 
 const TgChart = (function () {
 
-    function TgChart(containerId, data) {
+    function TgChart(containerId, data, options) {
         this.container = document.getElementById(containerId);
-        this.data = data;        
+        this.data = data;
+        this.options = options;
+        init.call(this, this.options);
     }
 
-    function generateLayout({} = {}) {
+    function generateLayout({name} = {}) {
+        if (name)
+            this.container.innerHTML += `<h2 class="chart__title">${name}</h2>`;
+
         var chartElement = document.createElement("div");
         chartElement.className = "chart__content";
         //chartElement.innerHTML = "<svg class=\"scales\"></svg>";
@@ -560,25 +658,17 @@ const TgChart = (function () {
 
         this.container.appendChild(legendElement);
 
-        const switchThemeButton = document.createElement("div");
-        switchThemeButton.className = "switch-theme-button";
-        switchThemeButton.innerText = "Switch Mode";        
-        switchThemeButton.addEventListener("click", () => {
-            document.querySelector(".app").classList.toggle("theme-night");
-        });
-        this.container.appendChild(switchThemeButton);
-
         return {
             chartMap: chartMapElement,
             chart: chartElement,
             legend: legendElement
-        }
+        };
     }
 
-    TgChart.prototype.init = function(options) {
+    function init(options) {
         this.chartData = new ChartData(this.data);
 
-        this.layout = generateLayout.call(this, options);                
+        this.layout = generateLayout.call(this, options);
         
         this.content = new ChartContent(this.layout.chart, this.chartData);
         this.content.draw();
@@ -586,14 +676,14 @@ const TgChart = (function () {
         this.chartMap = new ChartMap(this.layout.chartMap, this.chartData);
         this.chartMap.draw();
 
-        document.addEventListener("windowmove", (ev) => {
+        this.chartMap.container.addEventListener("windowmove", (ev) => {
             this.content.setViewBoxX(ev.detail.fromPercent, ev.detail.toPercent);
             this.content.adjustViewBoxY(ev.detail.fromPercent, ev.detail.toPercent, true);
         });
 
         this.content.setViewBoxX(0, 0.25);
         this.content.adjustViewBoxY(0, 0.25);
-    };
+    }
 
     TgChart.prototype.toggleDataset = function(item, datasetName) {
         item.classList.toggle("chart__legend__item_hidden");
@@ -601,11 +691,11 @@ const TgChart = (function () {
         setTimeout(() => {
             item.classList.remove("chart__legend__item_animating");
         }, 500);
-        this.chartData.toggleDatasetVisibility(datasetName);        
+        this.chartData.toggleDatasetVisibility(datasetName);
 
         this.content.toggleDataset(datasetName);
         this.chartMap.toggleDataset(datasetName);
-    }
+    };
 
     return TgChart;
 })();

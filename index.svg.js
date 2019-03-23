@@ -1,9 +1,17 @@
+const testData = getTestData();
+testData.forEach((data, index) => {
+    new TgChart(`chart${index}`, data);
+});
 
-    var testData = getTestData();
+const switchThemeButton = document.createElement("div");
+switchThemeButton.className = "switch-theme-button";
+switchThemeButton.innerText = "Switch Mode";
+switchThemeButton.addEventListener("click", () => {
+    document.querySelector(".app").classList.toggle("theme-night");
+});
+document.querySelector(".app").appendChild(switchThemeButton);
 
-    var chart1 = new TgChart("chart1", testData[0]);
-    chart1.init();
-
+    
 
 
 
