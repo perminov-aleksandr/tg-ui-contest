@@ -711,9 +711,11 @@ const TgChart = (function () {
             itemText.innerText = this.chartData.data.names[datasetName];            
             legendItem.appendChild(itemText);
 
-            legendItem.addEventListener("click", (ev) => {
+            const legendItemClickHandler = (ev) => {
                 this.toggleDataset(ev.currentTarget, datasetName);
-            });
+            };
+            legendItem.addEventListener("click", legendItemClickHandler);
+            legendItem.addEventListener("touchend", legendItemClickHandler);
 
             legendElement.appendChild(legendItem);
         }

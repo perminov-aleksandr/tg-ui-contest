@@ -182,7 +182,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--theme-day-background);
+    background-color: var(--theme-day-legend-item-border-color);
     border-radius: 50%;
     transition: transform var(--transition-duration) var(--transition-easing);
     transform: scale(0, 0);
