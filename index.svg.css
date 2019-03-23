@@ -5,7 +5,7 @@
     --transition-easing: ease-in-out;
     --transition-duration: 0.15s;
     --map-border-opacity: 0.7;
-    --scales-x-height: 3rem;
+    --scales-x-height: 2.5rem;
 
     --theme-day-background: #fff;
     --theme-day-font-color: #232323;
@@ -236,16 +236,11 @@ body {
     stroke-width: 3px;
     fill: none;
     opacity: 1;
+    transition: opacity var(--transition-duration) var(--transition-easing);
 }
 
 .scale-y_hidden {
     opacity: 0;
-}
-
-.scale-y__text {
-    font: normal 14px Segoe UI;
-    fill: var(--theme-day-scale-text-color);
-    stroke: none;
 }
 
 .scale-y-text {
@@ -254,8 +249,9 @@ body {
     left: 0;
     color: var(--theme-day-scale-text-color);
     font-size: 1.5rem;
-    transform: translate(0, -0.75rem);
-    animation: fadeIn var(--transition-duration);
+    transform: translate(0, -0.2rem);
+    opacity: 1;
+    transition: opacity var(--transition-duration) var(--transition-easing);
 }
 
 .scale-y-text_hidden {
@@ -272,7 +268,6 @@ body {
 }
 
 .scales-x {
-    color: var(--theme-day-scale-text-color);
     height: 100%;
     position: relative;
 }
@@ -284,25 +279,15 @@ body {
     color: var(--theme-day-scale-text-color);
     font-size: 1.5rem;
     transform: translate(-50%, -0.75rem);
-    animation: fadeIn var(--transition-duration);
     white-space: nowrap;
     padding: 0 10px;
+    opacity: 1;
 
-    transition: opacity 0.2s ease-in-out;
+    transition: opacity 0.15s ease-in-out;
 }
 
 .scale-x-text_hidden {
     opacity: 0;
-}
-
-@keyframes fadeIn {
-    0% {
-        opacity: 0;
-    }
-
-    100% {
-        opacity: 1;
-    }
 }
 
 @keyframes pulse {

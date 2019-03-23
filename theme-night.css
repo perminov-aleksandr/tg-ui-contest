@@ -16,16 +16,16 @@
     background-color: var(--theme-night-background);
 }
 
-.theme-night .scale-y {  
+.theme-night .scale-y {
     stroke: var(--theme-night-scale-color);
-}
-
-.theme-night .scale-y__text {
-    fill: var(--theme-night-scale-text-color);
 }
 
 .theme-night .scale-y-text {
     color: var(--theme-night-scale-text-color);
+}
+
+.theme-night .scale-x-text {
+    color: var(--theme-day-scale-text-color);
 }
 
 .theme-night .chart__map__window {

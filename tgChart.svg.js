@@ -187,16 +187,31 @@ const ChartContent = (function(){
         return result;
     }
 
+    const SCALE_ANIMATION_DURATION = 150;
+
     function clearScalesY() {
+        const removeScales = () => {
+            const scalesLines = this.svg.querySelectorAll(".scale-y_hidden");
+            scalesLines.forEach((line) => {
+                line.parentNode.removeChild(line);
+            });
+
+            const scalesTexts = this.scalesTextContainer.querySelectorAll(".scale-y-text_hidden");
+            scalesTexts.forEach((text) => {
+                text.parentNode.removeChild(text);
+            });
+        };
+        
         const scalesLines = this.svg.querySelectorAll(".scale-y");
         scalesLines.forEach((line) => {
-            line.parentNode.removeChild(line);
+            line.classList.add("scale-y_hidden");
         });
-
         const scaleText = this.scalesTextContainer.querySelectorAll(".scale-y-text");
         scaleText.forEach((scaleText) => {
-            scaleText.parentNode.removeChild(scaleText);
+            scaleText.classList.add("scale-y-text_hidden");
         });
+
+        setTimeout(removeScales, SCALE_ANIMATION_DURATION);
     }
 
     function generateScalesY(fromPercent = 0, toPercent = 1) {
@@ -361,13 +376,11 @@ const ChartContent = (function(){
         const endAnimation = () => {
             this.currentAnimation = null;
             this.container.classList.remove("chart__content_animating");
-            //console.log("animation ended");
         };
 
         if (this.currentAnimation) {
             clearTimeout(this.currentAnimation);
             endAnimation();
-            //console.log("animation cancelled");
         }
 
         let newY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
@@ -396,7 +409,6 @@ const ChartContent = (function(){
                 endAnimation();
         };        
         this.currentAnimation = setTimeout(animateViewBoxFunc, frameDuration);
-        //console.log("animation started");
     };
 
     ChartContent.prototype.toggleDataset = function(datasetName) {
