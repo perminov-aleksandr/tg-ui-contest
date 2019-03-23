@@ -1,6 +1,6 @@
 const ChartData = (function () {
     function getSpaceBetweenX() {
-        return 20;
+        return 10;
     }
 
     function findMaxXCoord(x, spaceBetweenX) {
@@ -33,17 +33,21 @@ const ChartData = (function () {
     };
 
     /**
+     * @param {number} fromPercent from
+     * @param {number} toPercent to
      * @returns {Array<number>} array of x
      */
-    ChartData.prototype.getX = function () {
-        return this.x;
+    ChartData.prototype.getX = function (fromPercent = 0, toPercent = 1) {
+        return this.x.slice(fromPercent * this.x.length, toPercent * this.x.length);
     };
 
     /**
+     * @param {number} fromPercent from
+     * @param {number} toPercent to
      * @returns {Array<string>} array of x values formatted to display
      */
-    ChartData.prototype.getDisplayedX = () => {
-        return this.getX().map((x) => new Date(x).toLocaleDateString("en-US",
+    ChartData.prototype.getDisplayedX = function (fromPercent = 0, toPercent = 1) {
+        return this.getX(fromPercent, toPercent).map((x) => new Date(x).toLocaleDateString("en-US",
             {
                 day: "numeric",
                 month: "short"
@@ -183,28 +187,20 @@ const ChartContent = (function(){
         return result;
     }
 
-    function clearScales() {
+    function clearScalesY() {
         const scalesLines = this.svg.querySelectorAll(".scale-y");
         scalesLines.forEach((line) => {
-            //line.classList.add("scale-y_hidden");
-            //setTimeout(() => {
-                this.svg.removeChild(line);
-            //}, 500);
+            line.parentNode.removeChild(line);
         });
 
-        this.scalesTextContainer.innerHTML = "";
-
-        /*const scaleText = this.scalesTextContainer.querySelectorAll(".stale-y-text");
+        const scaleText = this.scalesTextContainer.querySelectorAll(".scale-y-text");
         scaleText.forEach((scaleText) => {
-            //scaleText.classList.add("scale-y-text_hidden");
-            //setTimeout(() => {
-                this.scalesTextContainer.removeChild(scaleText);
-            //}, 500);
-        });*/
+            scaleText.parentNode.removeChild(scaleText);
+        });
     }
 
     function generateScalesY(fromPercent = 0, toPercent = 1) {
-        clearScales.call(this);
+        clearScalesY.call(this);
 
         const scalesYValues = generateScalesYValues.call(this, fromPercent, toPercent);
         const lines = generateScalesYLines.call(this, scalesYValues);
@@ -231,6 +227,47 @@ const ChartContent = (function(){
         return value / maxY * 100;
     }
 
+    function getScaleXPositionFromIndex(index, max) {
+        return index / max;
+    }
+
+    function updatesScalesX(fromPercent, toPercent) {
+        const scaleXWidth = this.svg.clientWidth / this.svg.viewBox.baseVal.width * this.chartData.maxXCoord;
+        this.scalesXContainer.style.width = `${scaleXWidth}px`;
+        
+        const scales = this.scalesXContainer.querySelectorAll(".scale-x-text");
+        
+        const fromIndex = Math.round(fromPercent * scales.length);
+        const toIndex = Math.round(toPercent * scales.length);
+        const maxScaleCount = this.scalesXScrollContainer.clientWidth / this.maxXScaleWidth;
+        const showEveryNth = Math.round((toIndex - fromIndex) / maxScaleCount);
+        const indexShift = -Math.round(showEveryNth / 2);
+        for (let index = 1; index < -indexShift; index++) {
+            scales[index].classList.add("scale-x-text_hidden");
+        }
+        for (let index = showEveryNth; index + indexShift < scales.length; index++) {
+            if (index % showEveryNth !== 0)
+                scales[index+indexShift].classList.add("scale-x-text_hidden");
+            else
+                scales[index+indexShift].classList.remove("scale-x-text_hidden");
+        }
+
+        const newScrollX = this.scalesXContainer.clientWidth * fromPercent;
+        this.scalesXScrollContainer.scroll(newScrollX, 0);
+    }
+
+    function generateScalesX() {
+        const xValues = this.chartData.getDisplayedX();
+        for (let i = 0; i < xValues.length; i++) {
+            let xValue = xValues[i];
+            const position = getScaleXPositionFromIndex.call(this, i, xValues.length);
+            this.scalesXContainer.innerHTML += `<span class="scale-x-text scale-x-text_hidden" style="left: ${position * 100}%">${xValue}</span>`;
+        }
+        const scaleTexts = Array.prototype.slice.call(this.scalesXContainer.querySelectorAll(".scale-x-text"));
+        const scaleTextWidths = scaleTexts.map((el) => el.clientWidth);
+        this.maxXScaleWidth = Math.max(...scaleTextWidths);
+    }
+
     ChartContent.prototype.draw = function () {
         this.spaceBetweenX = this.chartData.spaceBetweenX;
         this.maxXCoord = this.chartData.maxXCoord;
@@ -247,7 +284,16 @@ const ChartContent = (function(){
         scalesTextContainer.className = "scales";
         this.scalesTextContainer = scalesTextContainer;
         this.container.append(scalesTextContainer);
+
+        this.scalesXContainer = document.createElement("div");
+        this.scalesXContainer.className = "scales-x";
+        this.scalesXScrollContainer = document.createElement("div");
+        this.scalesXScrollContainer.className = "scales-x-scroll-container";
+        this.scalesXScrollContainer.appendChild(this.scalesXContainer);
+        this.container.appendChild(this.scalesXScrollContainer);
+        
         generateScalesY.call(this);
+        generateScalesX.call(this);
 
         this.container.appendChild(this.svg);
     };
@@ -258,6 +304,9 @@ const ChartContent = (function(){
         },
         "quadr": (t) => {
             return t*t;
+        },
+        "cubic": (t) => {
+            return --t*t*t+1;
         }
     };
 
@@ -274,6 +323,8 @@ const ChartContent = (function(){
 
         this.svg.viewBox.baseVal.x = newX;
         SvgHelpers.setWidth(this.svg, newWidth);
+
+        updatesScalesX.call(this, fromPercent, toPercent);
     };
 
     /**
@@ -334,13 +385,13 @@ const ChartContent = (function(){
 
         const easingFunction = easingFunctions["quadr"];
 
-        const animateViewBoxFunc = () => {            
+        const animateViewBoxFunc = () => {
             currentFrame++;
 
             SvgHelpers.setHeight(this.svg, diffY * easingFunction(currentFrame / totalFrames) + initialY);
 
             if (currentFrame < totalFrames)
-                this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);            
+                this.currentAnimation = setTimeout(animateViewBoxFunc, totalFrames);
             else
                 endAnimation();
         };        
@@ -624,7 +675,6 @@ const TgChart = (function () {
 
         var chartElement = document.createElement("div");
         chartElement.className = "chart__content";
-        //chartElement.innerHTML = "<svg class=\"scales\"></svg>";
         this.container.appendChild(chartElement);
         
         var chartMapElement = document.createElement("div");
