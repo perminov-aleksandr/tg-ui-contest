@@ -334,6 +334,12 @@ const ChartContent = (function () {
 
         this.cursor = generateCursor.call(this);
         this.svg.insertBefore(this.cursor, this.svg.firstChild);
+
+        this.cursorPanel = document.createElement("div");
+        this.cursorPanel.className = "cursor-panel";
+        this.cursorPanel.innerHTML = "<div class='cursor-panel__x'></div>" + "<div class='cursor-panel__y'>" + generateDatasetsValuesHtml(this.chartData) + "</div>";
+        this.container.appendChild(this.cursorPanel);
+
         this.container.addEventListener("mouseenter", (ev) => cursorStartHandler.call(this, ev));
         this.container.addEventListener("mousemove", (ev) => cursorMoveHandler.call(this, ev));
         this.container.addEventListener("mouseleave", (ev) => cursorEndHandler.call(this, ev));
@@ -341,13 +347,25 @@ const ChartContent = (function () {
         this.container.appendChild(this.svg);
     };
 
+    function generateDatasetsValuesHtml(chartData) {
+        let result = "";
+        for (let datasetName of Object.keys(chartData.datasets)) {
+            result += `<div class='cursor-panel__y__info' style='color: ${chartData.getColor(datasetName)}'>`;
+            result += `<div class='cursor-panel__y__value'></div>`;
+            result += `<div class='cursor-panel__y__name'>${chartData.data.names[datasetName]}</div>`;
+            result += `</div>`;
+        }
+        return result;
+    }
+
     function cursorStartHandler(ev) {
         this.cursor.style.opacity = 1;
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             if (this.chartData.datasets[datasetName].visible)
                 this.cursorPoints[datasetName].style.opacity = 1;
         };
-        this.container.dispatchEvent(new CustomEvent("cursorstart"));
+        
+        this.cursorPanel.style.opacity = 1;
     }
 
     function cursorEndHandler(ev) {
@@ -355,7 +373,8 @@ const ChartContent = (function () {
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             this.cursorPoints[datasetName].style.opacity = 0;
         };
-        this.container.dispatchEvent(new CustomEvent("cursorend"));
+        
+        this.cursorPanel.style.opacity = 0;
     }
 
     function cursorMoveHandler(ev) {
@@ -376,13 +395,33 @@ const ChartContent = (function () {
             datasetValues.push(datasetValue);
         }
 
-        this.container.dispatchEvent(new CustomEvent("cursormove", {
-            detail: {
-                x: closestXToCursor,
-                y: datasetValues,
-                xCoord: ev.offsetX
-            }
-        }))
+        updateCursorPanel.call(this, {
+            x: closestXToCursor,
+            y: datasetValues,
+            xCoord: ev.offsetX
+        });
+    }
+
+    function updateCursorPanel(values) {
+        this.cursorPanel.querySelector(".cursor-panel__x").innerText = this.chartData.displayX(values.x);
+        this.cursorPanel.querySelectorAll(".cursor-panel__y__value").forEach((elem, index) => {
+            elem.innerText = values.y[index];
+        })
+
+        const style = window.getComputedStyle(this.container);
+        const paddingLeft = parseInt(style.getPropertyValue("padding-left"));
+        const maxX = this.svg.clientWidth - this.cursorPanel.clientWidth / 2;
+        const minX = this.cursorPanel.clientWidth / 2;
+
+        if (values.xCoord < minX) {
+            this.cursorPanel.style.left = `${paddingLeft}px`;
+        } 
+        else if (values.xCoord > maxX) {
+            this.cursorPanel.style.left = `${this.svg.clientWidth - this.cursorPanel.clientWidth}px`;
+        }
+        else {
+            this.cursorPanel.style.left = `${values.xCoord + paddingLeft - this.cursorPanel.clientWidth / 2}px`;
+        }
     }
 
     function generateCursor() {
@@ -824,27 +863,11 @@ const TgChart = (function () {
 
         this.container.appendChild(legendElement);
 
-        this.cursorPanel = document.createElement("div");
-        this.cursorPanel.className = "cursor-panel";
-        this.cursorPanel.innerHTML = "<div class='cursor-panel__x'></div>" + "<div class='cursor-panel__y'>" + generateDatasetsValuesHtml(this.chartData) + "</div>";
-        this.container.appendChild(this.cursorPanel);
-
         return {
             chartMap: chartMapElement,
             chart: chartElement,
             legend: legendElement
         };
-    }
-
-    function generateDatasetsValuesHtml(chartData) {
-        let result = "";
-        for (let datasetName of Object.keys(chartData.datasets)) {
-            result += `<div class='cursor-panel__y__info' style='color: ${chartData.getColor(datasetName)}'>`;
-            result += `<div class='cursor-panel__y__value'></div>`;
-            result += `<div class='cursor-panel__y__name'>${chartData.data.names[datasetName]}</div>`;
-            result += `</div>`;
-        }
-        return result;
     }
 
     function init(options) {
@@ -854,15 +877,6 @@ const TgChart = (function () {
 
         this.content = new ChartContent(this.layout.chart, this.chartData);
         this.content.draw();
-        this.content.container.addEventListener("cursorstart", (ev) => {
-            this.cursorPanel.style.opacity = 1;
-        });
-        this.content.container.addEventListener("cursorend", (ev) => {
-            this.cursorPanel.style.opacity = 0;
-        });
-        this.content.container.addEventListener("cursormove", (ev) => {
-            updateCursorPanel.call(this, ev.detail);
-        });
 
         this.chartMap = new ChartMap(this.layout.chartMap, this.chartData);
         this.chartMap.draw();
@@ -877,29 +891,6 @@ const TgChart = (function () {
 
         this.content.setViewBoxX(INITIAL_FROM_PERCENT, INITIAL_TO_PERCENT);
         this.content.adjustViewBoxY(INITIAL_FROM_PERCENT, INITIAL_TO_PERCENT);
-    }
-
-    function updateCursorPanel(values) {
-        this.cursorPanel.querySelector(".cursor-panel__x").innerText = this.chartData.displayX(values.x);
-        this.cursorPanel.querySelectorAll(".cursor-panel__y__value").forEach((elem, index) => {
-            elem.innerText = values.y[index];
-        })
-
-        const style = window.getComputedStyle(this.container);
-        const paddingLeft = parseInt(style.getPropertyValue("padding-left"));
-        const marginLeft = parseInt(style.getPropertyValue("margin-left"));
-        const maxX = this.container.clientWidth - this.cursorPanel.clientWidth;
-        const minX = this.cursorPanel.clientWidth / 2;
-
-        if (values.xCoord < minX) {
-            this.cursorPanel.style.left = `${paddingLeft + marginLeft}px`;
-        } 
-        else if (values.xCoord > maxX) {
-            this.cursorPanel.style.left = `${maxX}px`;
-        }
-        else {
-            this.cursorPanel.style.left = `${values.xCoord + paddingLeft + marginLeft - this.cursorPanel.clientWidth / 2}px`;
-        }
     }
 
     TgChart.prototype.toggleDataset = function (item, datasetName) {
