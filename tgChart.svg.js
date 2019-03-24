@@ -336,7 +336,7 @@ const ChartContent = (function () {
         this.svg.insertBefore(this.cursor, this.svg.firstChild);
 
         this.cursorPanel = document.createElement("div");
-        this.cursorPanel.className = "cursor-panel";
+        this.cursorPanel.className = "cursor-panel cursor-panel_hidden";
         this.cursorPanel.innerHTML = "<div class='cursor-panel__x'></div>" + "<div class='cursor-panel__y'>" + generateDatasetsValuesHtml(this.chartData) + "</div>";
         this.container.appendChild(this.cursorPanel);
 
@@ -359,22 +359,22 @@ const ChartContent = (function () {
     }
 
     function cursorStartHandler(ev) {
-        this.cursor.style.opacity = 1;
+        this.cursor.classList.remove("cursor_hidden");
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             if (this.chartData.datasets[datasetName].visible)
-                this.cursorPoints[datasetName].style.opacity = 1;
+                this.cursorPoints[datasetName].classList.remove("cursor-point_hidden");
         };
         
-        this.cursorPanel.style.opacity = 1;
+        this.cursorPanel.classList.remove("cursor-panel_hidden");
     }
 
     function cursorEndHandler(ev) {
-        this.cursor.style.opacity = 0;
+        this.cursor.classList.add("cursor_hidden");
         for (let datasetName of Object.keys(this.chartData.datasets)) {
-            this.cursorPoints[datasetName].style.opacity = 0;
+            this.cursorPoints[datasetName].classList.add("cursor-point_hidden");
         };
         
-        this.cursorPanel.style.opacity = 0;
+        this.cursorPanel.classList.add("cursor-panel_hidden");
     }
 
     function cursorMoveHandler(ev) {
@@ -436,7 +436,7 @@ const ChartContent = (function () {
         this.cursorPoints = {};
         for (let datasetName of Object.keys(this.chartData.datasets)) { 
             const cursorPoint = document.createElementNS(svgNS, "circle");
-            cursorPoint.setAttributeNS(null, "class", "cursor-point");
+            cursorPoint.setAttributeNS(null, "class", "cursor-point cursor-point_hidden");
             cursorPoint.setAttributeNS(null, "cx", "0");
             cursorPoint.setAttributeNS(null, "cy", "0");
             cursorPoint.setAttributeNS(null, "r", "2");
@@ -558,7 +558,8 @@ const ChartContent = (function () {
         const datasetPath = this.svg.getElementById(datasetName);
         datasetPath.classList.toggle("chart-line_hidden");
 
-        this.cursorPoints[datasetName].classList.toggle("chart-point_hidden");
+        if (!this.chartData.datasets[datasetName].visible)
+            this.cursorPoints[datasetName].classList.add("cursor-point_hidden");
 
         this.adjustViewBoxY(this.fromPercent, this.toPercent, true);
     };
