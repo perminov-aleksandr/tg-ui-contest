@@ -13,7 +13,7 @@
 }
 
 .theme-night .chart__legend__item__indicator:after {
-    background-color: var(--theme-night-legend-item-border-color);
+    background-color: var(--theme-night-background);
 }
 
 .theme-night .scale-y {
@@ -46,4 +46,16 @@
 
 .theme-night .chart__map__border-right {
     background-color: var(--theme-night-map-border-color);
+}
+
+.theme-night .cursor {
+    stroke: var(--theme-night-cursor-color);
+}
+
+.theme-night .cursor-point {
+    fill: var(--theme-night-background);
+}
+
+.theme-night .cursor-panel {
+    background-color: var(--theme-night-background);
 }

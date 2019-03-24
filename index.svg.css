@@ -16,6 +16,7 @@
     --theme-day-map-overlay-background: hsl(200, 42%, 97%);
     --theme-day-map-border-color: hsla(200, 45%, 90%);
     --theme-day-map-window-border-color: hsla(200, 43%, 95%, var(--map-border-opacity));
+    --theme-day-cursor-color: var(--theme-day-scale-color);
 
     --theme-night-background: hsl(214, 26%, 19%);
     --theme-night-font-color: #fff;
@@ -26,6 +27,7 @@
     --theme-night-map-overlay-background: hsl(214, 29%, 17%);
     --theme-night-map-border-color: hsl(209, 25%, 34%);
     --theme-night-map-window-border-color: hsla(209, 25%, 34%, var(--map-border-opacity));
+    --theme-night-cursor-color: var(--theme-night-scale-color);
 }
 
 * {
@@ -90,7 +92,7 @@ body {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 400px;
+    height: 500px;
     position: relative;
     z-index: 0;
 }
@@ -182,7 +184,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: var(--theme-day-legend-item-border-color);
+    background-color: var(--theme-day-background);
     border-radius: 50%;
     transition: transform var(--transition-duration) var(--transition-easing);
     transform: scale(0, 0);
@@ -310,7 +312,7 @@ body {
 .chart__map {
     display: flex;
     align-items: stretch;
-    height: 100px;
+    height: 70px;
     width: 100%;
     position: relative;
     margin: 10px 0;
@@ -383,4 +385,47 @@ body {
     text-align: center;
     font-size: 1.5rem;
     color: hsl(203, 87%, 58%);
+}
+
+.cursor {
+    stroke: var(--theme-day-cursor-color);
+    stroke-width: 3px;
+    opacity: 0;
+}
+
+.cursor-point {
+    stroke-width: 4px;
+    fill: var(--theme-day-background);
+}
+
+.chart-point_hidden {
+    opacity: 0;
+}
+
+.cursor-panel {
+    position: absolute;
+    z-index: 3;
+    background-color: var(--theme-day-background);
+    box-shadow: hsla(0, 0%, 50%, 0.2) 0 0 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    opacity: 0;
+}
+
+.cursor-panel__y {
+    display: flex;
+}
+
+.cursor-panel__y__info:not(:last-child) {
+    margin-right: 20px;
+    font-size: 1.2rem;
+}
+
+.cursor-panel__y__value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.cursor-panel__y__name {
+    font-size: 1rem;
 }

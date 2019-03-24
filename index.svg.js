@@ -11,8 +11,6 @@ switchThemeButton.addEventListener("click", () => {
 });
 document.querySelector(".app").appendChild(switchThemeButton);
 
-    
-
 
 
 
