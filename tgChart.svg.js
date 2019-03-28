@@ -276,10 +276,10 @@ const ChartContent = (function () {
 
         const fromIndex = Math.round(fromPercent * scales.length);
         const toIndex = Math.round(toPercent * scales.length);
-        const maxScaleCount = this.scalesXScrollContainer.clientWidth / this.maxXScaleWidth;
+        const maxScaleCount = Math.floor(this.scalesXScrollContainer.clientWidth / this.maxXScaleWidth);
         const showEveryNth = Math.round((toIndex - fromIndex) / maxScaleCount);
         const indexShift = -Math.round(showEveryNth / 2);
-        for (let index = 1; index < -indexShift; index++) {
+        for (let index = 0; index < -indexShift; index++) {
             scales[index].classList.add("scale-x-text_hidden");
         }
         for (let index = showEveryNth; index + indexShift < scales.length; index++) {
@@ -430,7 +430,7 @@ const ChartContent = (function () {
         cursor.setAttributeNS(null, "y1", "0");
         cursor.setAttributeNS(null, "x2", "0");
         cursor.setAttributeNS(null, "y2", this.chartData.findMaxY() * SvgHelpers.HEIGHT_SCALE_FACTOR);
-        cursor.setAttributeNS(null, "class", "cursor");
+        cursor.setAttributeNS(null, "class", "cursor cursor_hidden");
         cursor.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
 
         this.cursorPoints = {};
