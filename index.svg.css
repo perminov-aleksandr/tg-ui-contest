@@ -6,6 +6,8 @@
     --transition-duration: 0.15s;
     --map-border-opacity: 0.7;
     --scales-x-height: 2.5rem;
+    --scales-offset-top: 10px;
+    --scales-offset-bottom: 20px;
 
     --theme-day-background: #fff;
     --theme-day-font-color: #232323;
@@ -123,7 +125,8 @@ body {
     width: 100%;
     height: calc(100% - var(--scales-x-height));
     transform: scale(1, -1);
-    padding: 10px 0 20px;
+    padding-top: var(--scales-offset-bottom);
+    padding-bottom: var(--scales-offset-top);
 }
 
 .chart__legend {
@@ -230,7 +233,8 @@ body {
     right: 0;
     bottom: var(--scales-x-height);
     z-index: 2;
-    margin: 20px 0 10px;
+    margin-top: var(--scales-offset-top);
+    margin-bottom: var(--scales-offset-bottom);
 }
 
 .scale-y {
@@ -387,9 +391,23 @@ body {
     color: hsl(203, 87%, 58%);
 }
 
+.cursor-container {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: var(--scales-x-height);
+    margin-top: var(--scales-offset-top);
+    margin-bottom: var(--scales-offset-bottom);
+}
+
 .cursor {
-    stroke: var(--theme-day-cursor-color);
-    stroke-width: 3px;
+    position: absolute;
+    z-index: 4;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--theme-day-cursor-color);
+    transform: translate(-50%, 0);
 }
 
 .cursor_hidden {
@@ -397,8 +415,16 @@ body {
 }
 
 .cursor-point {
-    stroke-width: 4px;
-    fill: var(--theme-day-background);
+    position: absolute;
+    z-index: 5;
+    width: 15px;
+    height: 15px;
+    border: 4px solid lightgray;
+    background: var(--theme-day-background);
+    border-radius: 50%;
+    transform: translate(-50%, 50%);
+
+    transition: bottom 0.075s linear;
 }
 
 .cursor-point_hidden {

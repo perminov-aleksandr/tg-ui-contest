@@ -333,7 +333,7 @@ const ChartContent = (function () {
         generateScalesX.call(this);
 
         this.cursor = generateCursor.call(this);
-        this.svg.insertBefore(this.cursor, this.svg.firstChild);
+        this.container.appendChild(this.cursor.container);
 
         this.cursorPanel = document.createElement("div");
         this.cursorPanel.className = "cursor-panel cursor-panel_hidden";
@@ -359,19 +359,19 @@ const ChartContent = (function () {
     }
 
     function cursorStartHandler(ev) {
-        this.cursor.classList.remove("cursor_hidden");
+        this.cursor.line.classList.remove("cursor_hidden");
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             if (this.chartData.datasets[datasetName].visible)
-                this.cursorPoints[datasetName].classList.remove("cursor-point_hidden");
+                this.cursor.points[datasetName].classList.remove("cursor-point_hidden");
         };
         
         this.cursorPanel.classList.remove("cursor-panel_hidden");
     }
 
     function cursorEndHandler(ev) {
-        this.cursor.classList.add("cursor_hidden");
+        this.cursor.line.classList.add("cursor_hidden");
         for (let datasetName of Object.keys(this.chartData.datasets)) {
-            this.cursorPoints[datasetName].classList.add("cursor-point_hidden");
+            this.cursor.points[datasetName].classList.add("cursor-point_hidden");
         };
         
         this.cursorPanel.classList.add("cursor-panel_hidden");
@@ -380,25 +380,24 @@ const ChartContent = (function () {
     function cursorMoveHandler(ev) {
         const t = ev.offsetX / ev.target.clientWidth;
         const cursorPositionPercent = (this.toPercent - this.fromPercent) * t + this.fromPercent;
-        const cursorPositionX = this.chartData.maxXCoord * cursorPositionPercent;
-        const closestIndex = Math.floor(cursorPositionPercent * this.chartData.x.length);
+
+        const closestIndex = Math.round(cursorPositionPercent * this.chartData.x.length);
         const closestXToCursor = this.chartData.x[closestIndex];
 
-        this.cursor.setAttributeNS(null, "x1", closestIndex * this.chartData.spaceBetweenX);
-        this.cursor.setAttributeNS(null, "x2", closestIndex * this.chartData.spaceBetweenX);
+        let xCoord = (closestIndex / this.chartData.x.length  - this.fromPercent) / (this.toPercent - this.fromPercent) * ev.target.clientWidth;
+        this.cursor.container.style.left = `${xCoord}px`;
 
         const datasetValues = [];
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             const datasetValue = this.chartData.datasets[datasetName].data[closestIndex];
-            this.cursorPoints[datasetName].setAttributeNS(null, "cx", closestIndex * this.chartData.spaceBetweenX);
-            this.cursorPoints[datasetName].setAttributeNS(null, "cy", datasetValue);
+            this.cursor.points[datasetName].style.bottom = `${100 * datasetValue / SvgHelpers.getHeight(this.svg)}%`;
             datasetValues.push(datasetValue);
         }
 
         updateCursorPanel.call(this, {
             x: closestXToCursor,
             y: datasetValues,
-            xCoord: ev.offsetX
+            xCoord: xCoord
         });
     }
 
@@ -425,30 +424,28 @@ const ChartContent = (function () {
     }
 
     function generateCursor() {
-        var cursor = document.createElementNS(svgNS, "line");
-        cursor.setAttributeNS(null, "x1", "0");
-        cursor.setAttributeNS(null, "y1", "0");
-        cursor.setAttributeNS(null, "x2", "0");
-        cursor.setAttributeNS(null, "y2", this.chartData.findMaxY() * SvgHelpers.HEIGHT_SCALE_FACTOR);
-        cursor.setAttributeNS(null, "class", "cursor cursor_hidden");
-        cursor.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
+        const cursorContainer = document.createElement("div");
+        cursorContainer.className = "cursor-container";
 
-        this.cursorPoints = {};
+        var line = document.createElement("div");
+        line.className = "cursor cursor_hidden";
+        cursorContainer.appendChild(line);
+
+        const cursorPoints = {};
         for (let datasetName of Object.keys(this.chartData.datasets)) { 
-            const cursorPoint = document.createElementNS(svgNS, "circle");
-            cursorPoint.setAttributeNS(null, "class", "cursor-point cursor-point_hidden");
-            cursorPoint.setAttributeNS(null, "cx", "0");
-            cursorPoint.setAttributeNS(null, "cy", "0");
-            cursorPoint.setAttributeNS(null, "r", "2");
-            cursorPoint.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
-            cursorPoint.setAttributeNS(null, "stroke", this.chartData.getColor(datasetName));
-            this.cursorPoints[datasetName] = cursorPoint;
+            const cursorPoint = document.createElement("div");
+            cursorPoint.className = "cursor-point cursor-point_hidden";
+            cursorPoint.style.borderColor = this.chartData.getColor(datasetName);
 
-            const chartLine = this.svg.getElementById(datasetName);
-            this.svg.insertBefore(cursorPoint, chartLine.nextSibling);
+            cursorPoints[datasetName] = cursorPoint;
+            cursorContainer.appendChild(cursorPoint);
         }
 
-        return cursor;
+        return { 
+            container: cursorContainer,
+            points: cursorPoints,
+            line: line
+        };
     }
 
     const easingFunctions = {
@@ -559,7 +556,7 @@ const ChartContent = (function () {
         datasetPath.classList.toggle("chart-line_hidden");
 
         if (!this.chartData.datasets[datasetName].visible)
-            this.cursorPoints[datasetName].classList.add("cursor-point_hidden");
+            this.cursor.points[datasetName].classList.add("cursor-point_hidden");
 
         this.adjustViewBoxY(this.fromPercent, this.toPercent, true);
     };
