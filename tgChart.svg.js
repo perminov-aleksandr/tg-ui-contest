@@ -378,26 +378,28 @@ const ChartContent = (function () {
     }
 
     function cursorMoveHandler(ev) {
-        const t = ev.offsetX / ev.target.clientWidth;
-        const cursorPositionPercent = (this.toPercent - this.fromPercent) * t + this.fromPercent;
+        const windowWidthPercent = this.toPercent - this.fromPercent;
+        const cursorInWindowPercent = ev.offsetX / this.svg.clientWidth;
+        const chartLength = this.chartData.x.length - 1;
+        const closestIndex = Math.round(chartLength * (windowWidthPercent * cursorInWindowPercent + this.fromPercent));
+        const cursorX = this.svg.clientWidth * (closestIndex / chartLength - this.fromPercent) / windowWidthPercent;
+        if (cursorX > this.svg.clientWidth || cursorX < 0)
+            return;
 
-        const closestIndex = Math.round(cursorPositionPercent * this.chartData.x.length);
-        const closestXToCursor = this.chartData.x[closestIndex];
+        this.cursor.container.style.left = `${cursorX}px`;
 
-        let xCoord = (closestIndex / this.chartData.x.length  - this.fromPercent) / (this.toPercent - this.fromPercent) * ev.target.clientWidth;
-        this.cursor.container.style.left = `${xCoord}px`;
-
+        const svgHeight = SvgHelpers.getHeight(this.svg);
         const datasetValues = [];
         for (let datasetName of Object.keys(this.chartData.datasets)) {
             const datasetValue = this.chartData.datasets[datasetName].data[closestIndex];
-            this.cursor.points[datasetName].style.bottom = `${100 * datasetValue / SvgHelpers.getHeight(this.svg)}%`;
+            this.cursor.points[datasetName].style.bottom = `${100 * datasetValue / svgHeight}%`;
             datasetValues.push(datasetValue);
         }
 
         updateCursorPanel.call(this, {
-            x: closestXToCursor,
+            x: this.chartData.x[closestIndex],
             y: datasetValues,
-            xCoord: xCoord
+            xCoord: cursorX
         });
     }
 
