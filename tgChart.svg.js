@@ -118,6 +118,14 @@ const SvgHelpers = (function () {
         return svg.viewBox.baseVal.height;
     };
 
+    const getWidth = function (svg) {
+        return svg.viewBox.baseVal.width;
+    };
+
+    const getX = function (svg) {
+        return svg.viewBox.baseVal.x;
+    };
+
     const setHeight = function (svg, height) {
         svg.viewBox.baseVal.height = HEIGHT_SCALE_FACTOR * height;
     };
@@ -126,12 +134,19 @@ const SvgHelpers = (function () {
         svg.viewBox.baseVal.width = width;
     };
 
+    const setX = function (svg, x) {
+        svg.viewBox.baseVal.x = x;
+    };
+
     return {
         svgNS,
         generateDatasetPath,
-        setWidth,
-        setHeight,
+        setX,
+        getX,
         getHeight,
+        setHeight,
+        getWidth,
+        setWidth,
         HEIGHT_SCALE_FACTOR
     };
 })();
@@ -474,9 +489,13 @@ const ChartContent = (function () {
         if (newWidth > this.chartData.maxXCoord)
             newWidth = this.chartData.maxXCoord;
 
-        this.svg.viewBox.baseVal.x = newX;
-        SvgHelpers.setWidth(this.svg, newWidth);
-        updatesScalesX.call(this, fromPercent, toPercent);
+        if (animate) {
+            this.animateViewBoxX(fromPercent, toPercent, newWidth, newX);
+        } else {
+            SvgHelpers.setX(this.svg, newX);
+            SvgHelpers.setWidth(this.svg, newWidth);
+            updatesScalesX.call(this, fromPercent, toPercent);
+        }
     };
 
     let prevMaxY = null;
@@ -553,7 +572,7 @@ const ChartContent = (function () {
         this.currentAnimation = setTimeout(animateViewBoxFunc, frameDuration);
     };
 
-    ChartContent.prototype.animateViewBoxX = function() {
+    ChartContent.prototype.animateViewBoxX = function(fromPercent, toPercent, newWidth, newX, animationDuration = 200) {
         const endAnimation = () => {
             this.currentAnimationX = null;
         };
@@ -563,17 +582,17 @@ const ChartContent = (function () {
             endAnimation();
         }
 
-        const newMaxY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
-        let newY = newMaxY * SvgHelpers.HEIGHT_SCALE_FACTOR;
-
         const fps = 60;
         const frameDuration = 1000 / fps;
         const totalFrames = animationDuration / frameDuration;
         let currentFrame = 0;
 
-        const initialY = SvgHelpers.getHeight(this.svg);
-        const diffY = newY - initialY;
-        if (diffY === 0)
+        const initialWidth = SvgHelpers.getWidth(this.svg);
+        const diffWidth = newWidth - initialWidth;
+
+        const initialX = SvgHelpers.getX(this.svg);
+        const diffX = newX - initialX;
+        if (diffX === 0 && diffWidth === 0)
             return;
 
         const easingFunction = easingFunctions["quadr"];
@@ -581,13 +600,15 @@ const ChartContent = (function () {
         const animateViewBoxFunc = () => {
             currentFrame++;
 
-            this.svg.viewBox.baseVal.height = diffY * easingFunction(currentFrame / totalFrames) + initialY;
+            const percent = easingFunction(currentFrame / totalFrames);
+            SvgHelpers.setX(this.svg, diffX * percent + initialX);
+            SvgHelpers.setWidth(this.svg, diffWidth * percent + initialWidth);
 
             if (currentFrame < totalFrames)
                 this.currentAnimationX = setTimeout(animateViewBoxFunc, totalFrames);
             else {
                 endAnimation();
-                generateScalesY.call(this, this.fromPercent, this.toPercent);
+                updatesScalesX.call(this, fromPercent, toPercent);
             }
         };
         this.currentAnimationX = setTimeout(animateViewBoxFunc, frameDuration);
