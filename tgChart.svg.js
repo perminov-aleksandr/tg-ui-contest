@@ -208,7 +208,7 @@ const ChartContent = (function () {
         return result;
     }
 
-    const SCALE_ANIMATION_DURATION = 150;
+    const SCALE_ANIMATION_DURATION = 300;
 
     function clearScalesY() {
         const removeScales = () => {
@@ -463,8 +463,9 @@ const ChartContent = (function () {
     /**
      * @param {number} fromPercent new start X
      * @param {number} toPercent new end X
+     * @param {boolean} animate animate
      */
-    ChartContent.prototype.setViewBoxX = function (fromPercent, toPercent) {
+    ChartContent.prototype.setViewBoxX = function (fromPercent, toPercent, animate = false) {
         const newX = fromPercent * this.chartData.maxXCoord;
         let newWidth = (toPercent - fromPercent) * this.chartData.maxXCoord;
 
@@ -473,7 +474,6 @@ const ChartContent = (function () {
 
         this.svg.viewBox.baseVal.x = newX;
         SvgHelpers.setWidth(this.svg, newWidth);
-
         updatesScalesX.call(this, fromPercent, toPercent);
     };
 
@@ -511,7 +511,7 @@ const ChartContent = (function () {
         }
     };
 
-    ChartContent.prototype.animateViewBoxY = function (animationDuration = 100) {
+    ChartContent.prototype.animateViewBoxY = function (animationDuration = 200) {
         const endAnimation = () => {
             this.currentAnimation = null;
         };
@@ -550,6 +550,46 @@ const ChartContent = (function () {
         };
         this.currentAnimation = setTimeout(animateViewBoxFunc, frameDuration);
     };
+
+    ChartContent.prototype.animateViewBoxX = function() {
+        const endAnimation = () => {
+            this.currentAnimationX = null;
+        };
+
+        if (this.currentAnimationX) {
+            clearTimeout(this.currentAnimationX);
+            endAnimation();
+        }
+
+        const newMaxY = this.chartData.findMaxY(this.fromPercent, this.toPercent);
+        let newY = newMaxY * SvgHelpers.HEIGHT_SCALE_FACTOR;
+
+        const fps = 60;
+        const frameDuration = 1000 / fps;
+        const totalFrames = animationDuration / frameDuration;
+        let currentFrame = 0;
+
+        const initialY = SvgHelpers.getHeight(this.svg);
+        const diffY = newY - initialY;
+        if (diffY === 0)
+            return;
+
+        const easingFunction = easingFunctions["quadr"];
+
+        const animateViewBoxFunc = () => {
+            currentFrame++;
+
+            this.svg.viewBox.baseVal.height = diffY * easingFunction(currentFrame / totalFrames) + initialY;
+
+            if (currentFrame < totalFrames)
+                this.currentAnimationX = setTimeout(animateViewBoxFunc, totalFrames);
+            else {
+                endAnimation();
+                generateScalesY.call(this, this.fromPercent, this.toPercent);
+            }
+        };
+        this.currentAnimationX = setTimeout(animateViewBoxFunc, frameDuration);
+    }
 
     ChartContent.prototype.toggleDataset = function (datasetName) {
         const datasetPath = this.svg.getElementById(datasetName);
@@ -880,7 +920,7 @@ const TgChart = (function () {
         this.chartMap.draw();
 
         this.chartMap.container.addEventListener("windowmove", (ev) => {
-            this.content.setViewBoxX(ev.detail.fromPercent, ev.detail.toPercent);
+            this.content.setViewBoxX(ev.detail.fromPercent, ev.detail.toPercent, true);
             this.content.adjustViewBoxY(ev.detail.fromPercent, ev.detail.toPercent, true);
         });
 
